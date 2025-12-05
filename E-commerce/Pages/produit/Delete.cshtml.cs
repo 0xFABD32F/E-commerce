@@ -49,8 +49,16 @@ namespace E_commerce.Pages.produit
             }
 
             var product = await _context.Product.FindAsync(id);
+            //To delete image
+            
             if (product != null)
             {
+                var imgPath = product.ImgPath;
+                if(System.IO.File.Exists(imgPath))
+                {
+                    System.IO.File.Delete(imgPath);
+                }
+                
                 Product = product;
                 _context.Product.Remove(Product);
                 await _context.SaveChangesAsync();

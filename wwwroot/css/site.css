@@ -1,0 +1,97 @@
+/* ---------- GENERAL NAVBAR ---------- */
+.main-header {
+    border-bottom: 1px solid #e5e7eb;
+    background: #ffffff;
+    padding: 0.5rem 0;
+}
+
+.navbar {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+/* Space between items */
+.nav-large-gap .nav-item {
+    margin-left: 1.2rem;
+}
+
+/* Smooth hover underline */
+.nav-hover {
+    position: relative;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #333 !important;
+    transition: color 0.2s ease-in-out;
+}
+
+    .nav-hover:hover {
+        color: #ff9900 !important;
+    }
+
+    .nav-hover::after {
+        content: "";
+        position: absolute;
+        width: 0;
+        height: 2px;
+        left: 0;
+        bottom: -4px;
+        background: #ff9900;
+        transition: width 0.25s ease-in-out;
+    }
+
+    .nav-hover:hover::after {
+        width: 100%;
+    }
+
+/* ---------- LOGO ---------- */
+.navbar-brand {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.logo-image {
+    height: 40px;
+    width: auto;
+    max-width: 120px;
+    object-fit: contain;
+    display: block;
+}
+
+
+/* ---------- BUTTONS ---------- */
+.btn-amz {
+    background: #ff9900;
+    color: #fff;
+    font-weight: 600;
+    padding: 0.45rem 1.2rem;
+    border-radius: 8px;
+    transition: background 0.25s ease-in-out;
+    border: none;
+}
+
+    .btn-amz:hover {
+        background: #e68900;
+        color: #fff;
+    }
+
+/* Mobile spacing improvements */
+@media (max-width: 992px) {
+    .nav-large-gap .nav-item {
+        margin-left: 0;
+        margin-top: 0.7rem;
+    }
+
+    .btn-amz {
+        width: 100%;
+        text-align: center;
+    }
+
+    .logo-image {
+        height: 20px;
+        max-width: 100px;
+    }
+
+    .brand-text {
+        font-size: 1.25rem;
+    }
+}

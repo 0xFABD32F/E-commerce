@@ -1,15 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
+﻿using Azure.Core;
 using E_commerce.Data;
 using E_commerce.Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.CodeAnalysis.RulesetToEditorconfig;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace E_commerce.Pages.produit
 {
@@ -28,7 +31,7 @@ namespace E_commerce.Pages.produit
         public Product Product { get; set; } = default!;
 
         [BindProperty]
-        public IFormFile ImageFile { get; set; }
+        public IFormFile? ImageFile { get; set; }
 
         public async Task<IActionResult> OnGetAsync(int? id)
         {
@@ -43,87 +46,87 @@ namespace E_commerce.Pages.produit
                 return NotFound();
             }
             Product = product;
-            return Page();
+            return Page();  // ← Tells framework to render Edit.cshtml
         }
-
-        // To protect from overposting attacks, enable the specific properties you want to bind to.
-        // For more information, see https://aka.ms/RazorPagesCRUD.
         public async Task<IActionResult> OnPostAsync()
         {
-            if (!ModelState.IsValid)
-            {
-                return Page();
-            }
+            //ModelState is a dictionary (key - value)
+            //keys : names of input fields
+            //values : info about the binding, validation errors
+            //It tracks:
+            //==>What the user submitted
+            //==>Validation errors from Data Annotations
+            //==>Whether it could be converted to the target type(e.g., string → decimal)
+            //In a POST request and after binding the user input to the actual model(which is ModelState),
+            //It can communicate with the Razor Pages Helper to show error messages in HTML
 
-            // Handle image upload if a new image is provided
-            if (ImageFile != null && ImageFile.Length > 0)
+            if (!ModelState.IsValid)
+                return Page();
+
+            try
             {
-                try
+                // Load product from DB (EF tracks this)
+                var existingProduct = await _context.Product.FindAsync(Product.Id);
+                if (existingProduct == null)
+                    return NotFound();
+
+                // Update scalar properties
+                existingProduct.Name = Product.Name;
+                existingProduct.Price = Product.Price;
+                existingProduct.Description = Product.Description;
+
+                if (ImageFile != null && ImageFile.Length > 0)
                 {
-                    // Validate file type
+                    // Check file extension
                     var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
                     var fileExtension = Path.GetExtension(ImageFile.FileName).ToLower();
-                    
+
                     if (!allowedExtensions.Contains(fileExtension))
                     {
                         ModelState.AddModelError("ImageFile", "Only image files are allowed.");
                         return Page();
                     }
 
-                    // Delete old image if it exists
-                    if (!string.IsNullOrEmpty(Product.ImgPath))
+                    // Delete old image
+                    if (!string.IsNullOrEmpty(existingProduct.ImgPath))
                     {
-                        var oldImagePath = Path.Combine(_webHostEnvironment.WebRootPath, Product.ImgPath);
+                        var oldImagePath = Path.Combine(_webHostEnvironment.WebRootPath, existingProduct.ImgPath);
                         if (System.IO.File.Exists(oldImagePath))
-                        {
                             System.IO.File.Delete(oldImagePath);
-                        }
                     }
 
-                    // Create unique filename for new image
-                    var fileName = Guid.NewGuid().ToString() + fileExtension;
-                    var imagePath = Path.Combine(_webHostEnvironment.WebRootPath, "images");
-                    
-                    // Ensure directory exists
-                    if (!Directory.Exists(imagePath))
-                    {
-                        Directory.CreateDirectory(imagePath);
-                    }
+                    // Save new image
+                    var fileName = Guid.NewGuid() + fileExtension;
+                    var imagesFolder = Path.Combine(_webHostEnvironment.WebRootPath, "images");
 
-                    var filePath = Path.Combine(imagePath, fileName);
+                    if (!Directory.Exists(imagesFolder))
+                        Directory.CreateDirectory(imagesFolder);
 
-                    // Save file
-                    using (var fileStream = new FileStream(filePath, FileMode.Create))
+                    var newImagePath = Path.Combine(imagesFolder, fileName);
+
+                    using (var fileStream = new FileStream(newImagePath, FileMode.Create))
                     {
                         await ImageFile.CopyToAsync(fileStream);
                     }
 
-                    // Store relative path in database
-                    Product.ImgPath = Path.Combine("images", fileName).Replace("\\", "/");
-                }
-                catch (Exception ex)
-                {
-                    ModelState.AddModelError("ImageFile", $"Error uploading file: {ex.Message}");
-                    return Page();
-                }
-            }
+                    // Save relative path in DB
+                    existingProduct.ImgPath = $"images/{fileName}";
+                }           
 
-            _context.Attach(Product).State = EntityState.Modified;
-
-            try
-            {
+                // Save changes in DB
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
                 if (!ProductExists(Product.Id))
-                {
                     return NotFound();
-                }
                 else
-                {
                     throw;
-                }
+            }
+            catch (Exception ex)
+            {
+                ModelState.AddModelError("ImageFile", $"Error uploading file: {ex.Message}");
+                return Page();
             }
 
             return RedirectToPage("./Index");

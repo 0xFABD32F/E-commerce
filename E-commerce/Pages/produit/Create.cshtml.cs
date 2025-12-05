@@ -32,7 +32,7 @@ namespace E_commerce.Pages.produit
         public E_commerce.Models.Product Product { get; set; } = default!;
 
         [BindProperty]
-        public IFormFile ImageFile { get; set; }
+        public IFormFile? ImageFile { get; set; }
 
         // For more information, see https://aka.ms/RazorPagesCRUD.
         public async Task<IActionResult> OnPostAsync()
