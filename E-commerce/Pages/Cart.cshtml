@@ -1,0 +1,55 @@
+@page
+@model E_commerce.Pages.CartModel
+@{
+    ViewData["Title"] = "Your Cart";
+}
+
+<h1>Your Cart</h1>
+@if (Model.Cart.productLines.Count == 0)
+{
+    <p>Your cart is empty.</p>
+}
+else
+{
+    <form method="post">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Subtotal</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            @for (int i = 0; i < Model.Cart.productLines.Count; i++)
+            {
+                    
+                        <tr>
+                            <td>@Model.Cart.productLines[i].Product.Name</td>
+                            <td>@Model.Cart.productLines[i].Product.Price</td>
+                            <td>
+                                <input type="number" name="Quantities" value="@Model.Cart.productLines[i].SelectedQty" min="1" style="width:60px;" />
+                                <input type="hidden" name="ProductIds" value="@Model.Cart.productLines[i].ProductId" />
+                            </td>
+                            <td>@(Model.Cart.productLines[i].Product.Price * Model.Cart.productLines[i].SelectedQty) DH</td>
+                            <td>
+                                <button type="submit" name="remove" value="@Model.Cart.productLines[i].ProductId" class="btn btn-danger btn-sm">Remove</button>
+                            </td>
+                        </tr>
+                        
+
+                    
+           
+            }
+            </tbody>
+        </table>
+        <button type="submit" name="update" value="true" class="btn btn-primary">Update Cart</button>
+    </form>    
+        <h3>Total: @Model.Cart.CalculateSubTotal() DH</h3>
+        
+    
+    
+}
+<a asp-page="/Index">Continue Shopping</a>  

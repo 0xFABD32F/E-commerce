@@ -12,10 +12,14 @@ using System.IO;
 
 namespace E_commerce.Pages.produit
 {
+    //The user must be logged in to do CRUD operations
+    //The session cookie must me set in the login page after succesful log in
+    //In order to proceed to checkout, the user must be logged in
     public class CreateModel : PageModel
     {
         private readonly E_commerce.Data.E_commerceContext _context;
         private readonly IWebHostEnvironment _webHostEnvironment;
+        public SelectList Categories { get; set; }
 
         public CreateModel(E_commerce.Data.E_commerceContext context, IWebHostEnvironment webHostEnvironment)
         {
@@ -25,8 +29,11 @@ namespace E_commerce.Pages.produit
 
         public IActionResult OnGet()
         {
+            //Categories = new SelectList(_context.Category, "Id", "Name");
             return Page();
         }
+
+       
 
         [BindProperty]
         public E_commerce.Models.Product Product { get; set; } = default!;
@@ -47,7 +54,7 @@ namespace E_commerce.Pages.produit
                 // Validate file type
                 var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
                 var fileExtension = Path.GetExtension(ImageFile.FileName).ToLower();
-                
+
                 if (!allowedExtensions.Contains(fileExtension))
                 {
                     ModelState.AddModelError("ImageFile", "Only image files are allowed.");
@@ -57,7 +64,7 @@ namespace E_commerce.Pages.produit
                 // Create unique filename
                 var fileName = Guid.NewGuid().ToString() + fileExtension;
                 var imagePath = Path.Combine(_webHostEnvironment.WebRootPath, "images");
-                
+
                 // Ensure directory exists
                 if (!Directory.Exists(imagePath))
                 {
@@ -79,7 +86,10 @@ namespace E_commerce.Pages.produit
             _context.Product.Add(Product);
             await _context.SaveChangesAsync();
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("../Index");
         }
+      
     }
 }
+
+    

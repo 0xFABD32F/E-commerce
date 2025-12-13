@@ -10,11 +10,11 @@ using E_commerce.Models;
 
 namespace E_commerce.Pages.produit
 {
-    public class IndexModel : PageModel
+    public class ListedModel : PageModel
     {
         private readonly E_commerce.Data.E_commerceContext _context;
 
-        public IndexModel(E_commerce.Data.E_commerceContext context)
+        public ListedModel(E_commerce.Data.E_commerceContext context)
         {
             _context = context;
         }
@@ -23,7 +23,8 @@ namespace E_commerce.Pages.produit
 
         public async Task OnGetAsync()
         {
-            Product = await _context.Product.ToListAsync();
+            Product = await _context.Product.ToListAsync();          
+
         }
     }
 }

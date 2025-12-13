@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.Runtime.InteropServices.Marshalling;
 
 
 namespace E_commerce.Models
@@ -31,5 +32,18 @@ namespace E_commerce.Models
         [Precision(18, 2)]
         public decimal Price { get; set; }
         public string? ImgPath { get; set; }
+
+        //[Required(ErrorMessage = "Category is required")]
+        //public int CategoryId { get; set; }
+        
+        //public Category Category { get; set; }
+        [Required(ErrorMessage ="Available quantity is required")]
+        public uint Available_Qty {  get; set; }
+
+        public bool IsAvailable(uint Qty)
+        {
+            return (Available_Qty >= Qty);
+
+        }
     }
 }

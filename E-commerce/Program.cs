@@ -1,6 +1,8 @@
+using E_commerce.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using E_commerce.Data;
+using StackExchange.Redis;
+
 
 
 
@@ -11,6 +13,13 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddDbContext<E_commerceContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("E_commerceContext") ?? throw new InvalidOperationException("Connection string 'E_commerceContext' not found.")));
+//builder.Services.AddStackExchangeRedisCache(options =>
+//{
+  //  options.Configuration = "localhost:6379"; 
+    //options.InstanceName = "EComCart:";       
+//});
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    sp => ConnectionMultiplexer.Connect("localhost:6379"));
 
 var app = builder.Build();
 // Configure the HTTP request pipeline.

@@ -15,5 +15,24 @@ namespace E_commerce.Data
         }
 
         public DbSet<E_commerce.Models.Product> Product { get; set; } = default!;
+        public DbSet<E_commerce.Models.Cart> Cart { get; set; } = default!;        
+        
+        public DbSet<E_commerce.Models.productLine> ProductLine { get; set; } = default!;
+        //public DbSet<E_commerce.Models.Category> Category { get; set; } = default!;
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+
+           // modelBuilder.Entity<Category>()
+             //   .HasIndex(c => c.Name)
+               // .IsUnique();
+            modelBuilder.Entity<Cart>()
+                .HasMany(c => c.productLines)
+                .WithOne()
+                .OnDelete(DeleteBehavior.Cascade);
+
+        }
+
     }
 }
