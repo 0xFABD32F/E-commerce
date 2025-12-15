@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +13,8 @@ namespace E_commerce.Pages
         private readonly E_commerceContext _context;
         private readonly IDatabase _redis;
 
+        private const int GuestCookieLifetimeDays = 2;
+
         public IndexModel(E_commerceContext context, IConnectionMultiplexer redis)
         {
             _context = context;
@@ -29,104 +27,202 @@ namespace E_commerce.Pages
         [BindProperty]
         public uint Quantity { get; set; }
 
-        public IList<Product> Product { get; set; } = default!;
-        public IList<Category> Categories { get; set; } = default!;
+        public IList<Product> Product { get; private set; } = new List<Product>();
+        public IList<Category> Categories { get; private set; } = new List<Category>();
 
-        public async Task OnGetAsync(int? categoryId, decimal? minPrice, decimal? maxPrice, string stockStatus)
+        /* =========================
+         * Razor Page entry points
+         * ========================= */
+
+        public async Task OnGetAsync(
+            int? categoryId,
+            decimal? minPrice,
+            decimal? maxPrice,
+            string? stockStatus)
         {
-            //Set guestCookie as a key for Redis database to memorize cart items
-            if (!Request.Cookies.ContainsKey("GuestId"))
-            {
-                var guestId = Guid.NewGuid().ToString(); //Unique key for each guest
-                Response.Cookies.Append(
-                    "GuestId",
-                    guestId,
-                    new CookieOptions
-                    {
-                        HttpOnly = true,           // prevents client-side JS from accessing it
-                        Secure = true,             // send only over HTTPS
-                        SameSite = SameSiteMode.Strict,
-                        Expires = DateTimeOffset.UtcNow.AddDays(2) // cookie valid for 30 days
-                    }
-                );
-            }
+            EnsureGuestCookie();
 
-            // Load all categories for the filter sidebar
-            Categories = await _context.Category.ToListAsync();
+            Categories = await LoadCategoriesAsync();
 
-            // Start with all products, including the Category navigation property
-            var query = _context.Product.Include(p => p.Category).AsQueryable();
-
-            // Filter by category if selected
-            if (categoryId.HasValue && categoryId.Value > 0)
-            {
-                query = query.Where(p => p.CategoryId == categoryId.Value);
-            }
-
-            // Filter by minimum price
-            if (minPrice.HasValue && minPrice.Value > 0)
-            {
-                query = query.Where(p => p.Price >= minPrice.Value);
-            }
-
-            // Filter by maximum price
-            if (maxPrice.HasValue && maxPrice.Value > 0)
-            {
-                query = query.Where(p => p.Price <= maxPrice.Value);
-            }
-
-            // Filter by stock status
-            if (!string.IsNullOrEmpty(stockStatus))
-            {
-                if (stockStatus.ToLower() == "instock")
-                {
-                    query = query.Where(p => p.Available_Qty > 0);
-                }
-                else if (stockStatus.ToLower() == "outofstock")
-                {
-                    query = query.Where(p => p.Available_Qty == 0);
-                }
-            }
-
-            // Execute query and get results
-            Product = await query.ToListAsync();
+            Product = await LoadFilteredProductsAsync(
+                categoryId,
+                minPrice,
+                maxPrice,
+                stockStatus);
         }
 
         public async Task<IActionResult> OnPostAddToCartAsync()
         {
-            var guestId = Request.Cookies["GuestId"];
+            var guestId = GetGuestId();
             if (guestId == null)
                 return RedirectToPage();
 
-            // Load product from DB
-            //Added the Available quantity condition to not allow the attacker to add an "Out of Stock" item to the cache if he manipulated the HTML.
-            var product = await _context.Product
-                .Include(p => p.Category)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p =>
-                    p.Id == ProductId &&
-                    p.Available_Qty > 0
-                );
-
+            var product = await LoadPurchasableProductAsync(ProductId);
             if (product == null)
                 return RedirectToPage();
 
-            // Load or create cart from Redis
-            Cart cart;
-            var cartJson = await _redis.StringGetAsync(guestId);
-            if (cartJson.HasValue)
-                cart = JsonSerializer.Deserialize<Cart>(cartJson!)!;
-            else
-                cart = new Cart();
+            var cart = await LoadCartAsync(guestId);
 
-            // Add or update productLine
-            var line = new productLine { ProductId = ProductId, SelectedQty = 1, Product = product };
-            cart.AddToCart(line);
+            AddProductToCart(cart, product);
 
-            // Save cart to Redis
-            await _redis.StringSetAsync(guestId, JsonSerializer.Serialize(cart));
+            await SaveCartAsync(guestId, cart);
 
             return RedirectToPage();
+        }
+
+        /* =========================
+         * Guest identification
+         * ========================= */
+
+        private void EnsureGuestCookie()
+        {
+            if (Request.Cookies.ContainsKey("GuestId"))
+                return;
+
+            /*
+             * The GuestId is a server-generated identifier used exclusively
+             * for cart tracking. It is intentionally opaque and non-semantic.
+             *
+             * Reference:
+             * https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
+             */
+            Response.Cookies.Append(
+                "GuestId",
+                Guid.NewGuid().ToString(),
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Strict,
+                    Expires = DateTimeOffset.UtcNow.AddDays(GuestCookieLifetimeDays)
+                });
+        }
+
+        private string? GetGuestId()
+        {
+            return Request.Cookies.TryGetValue("GuestId", out var id)
+                ? id
+                : null;
+        }
+
+        /* =========================
+         * Product loading & filtering
+         * ========================= */
+
+        private async Task<IList<Category>> LoadCategoriesAsync()
+        {
+            return await _context.Category.ToListAsync();
+        }
+
+        private async Task<IList<Product>> LoadFilteredProductsAsync(
+            int? categoryId,
+            decimal? minPrice,
+            decimal? maxPrice,
+            string? stockStatus)
+        {
+            var query = _context.Product
+                .Include(p => p.Category)
+                .AsQueryable();
+
+            query = ApplyCategoryFilter(query, categoryId);
+            query = ApplyPriceFilter(query, minPrice, maxPrice);
+            query = ApplyStockFilter(query, stockStatus);
+
+            return await query.ToListAsync();
+        }
+
+        private static IQueryable<Product> ApplyCategoryFilter(
+            IQueryable<Product> query,
+            int? categoryId)
+        {
+            return categoryId.HasValue && categoryId > 0
+                ? query.Where(p => p.CategoryId == categoryId)
+                : query;
+        }
+
+        private static IQueryable<Product> ApplyPriceFilter(
+            IQueryable<Product> query,
+            decimal? minPrice,
+            decimal? maxPrice)
+        {
+            if (minPrice.HasValue && minPrice > 0)
+                query = query.Where(p => p.Price >= minPrice.Value);
+
+            if (maxPrice.HasValue && maxPrice > 0)
+                query = query.Where(p => p.Price <= maxPrice.Value);
+
+            return query;
+        }
+
+        private static IQueryable<Product> ApplyStockFilter(
+            IQueryable<Product> query,
+            string? stockStatus)
+        {
+            /*
+             * Stock filtering is case-insensitive but intentionally explicit.
+             * Using magic strings here is acceptable because values are UI-bound
+             * and not reused elsewhere.
+             */
+            return stockStatus?.ToLower() switch
+            {
+                "instock" => query.Where(p => p.Available_Qty > 0),
+                "outofstock" => query.Where(p => p.Available_Qty == 0),
+                _ => query
+            };
+        }
+
+        /* =========================
+         * Cart operations
+         * ========================= */
+
+        private async Task<Product?> LoadPurchasableProductAsync(int productId)
+        {
+            /*
+             * Stock validation is enforced server-side to prevent
+             * HTML or request tampering.
+             *
+             * Reference:
+             * https://owasp.org/www-community/attacks/Parameter_tampering
+             */
+            return await _context.Product
+                .Include(p => p.Category)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p =>
+                    p.Id == productId &&
+                    p.Available_Qty > 0);
+        }
+
+        private async Task<Cart> LoadCartAsync(string guestId)
+        {
+            var cartJson = await _redis.StringGetAsync(guestId);
+
+            return cartJson.HasValue
+                ? JsonSerializer.Deserialize<Cart>(cartJson!)!
+                : new Cart();
+        }
+
+        private static void AddProductToCart(Cart cart, Product product)
+        {
+            /*
+             * Quantity is intentionally set server-side.
+             * Client-supplied quantities are ignored here to
+             * avoid inconsistent cart states.
+             */
+            var line = new productLine
+            {
+                ProductId = product.Id,
+                SelectedQty = 1,
+                Product = product
+            };
+
+            cart.AddToCart(line);
+        }
+
+        private async Task SaveCartAsync(string guestId, Cart cart)
+        {
+            await _redis.StringSetAsync(
+                guestId,
+                JsonSerializer.Serialize(cart));
         }
     }
 }

@@ -1,11 +1,10 @@
-using E_commerce.Data;
+﻿using E_commerce.Data;
 using E_commerce.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using System.Text.Json;
-
 
 namespace E_commerce.Pages
 {
@@ -14,7 +13,9 @@ namespace E_commerce.Pages
         private readonly E_commerceContext _context;
         private readonly IDatabase _redis;
 
-        public Cart Cart { get; set; } = new Cart();
+        public Cart Cart { get; private set; } = new();
+
+        private const int CartTtlHours = 2;
 
         public CartModel(E_commerceContext context, IConnectionMultiplexer redis)
         {
@@ -22,128 +23,169 @@ namespace E_commerce.Pages
             _redis = redis.GetDatabase();
         }
 
+        /* =========================
+         * Razor Page entry points
+         * ========================= */
+
         public async Task OnGetAsync()
         {
-            if (!Request.Cookies.TryGetValue("GuestId", out var guestId))
+            var cart = await LoadCartAsync();
+            if (cart == null)
                 return;
 
-            var cartJson = await _redis.StringGetAsync(guestId);
-            if (!cartJson.HasValue)
-                return;
-
-            var cart = JsonSerializer.Deserialize<Cart>(cartJson!)!;
-            if (cart.productLines.Count == 0)
-                return;
-
-            // 1. Collect product IDs from cart
-            var productIds = cart.productLines
-                .Select(l => l.ProductId)
-                .Distinct()
-                .ToList();
-
-            // 2. Load all products in ONE query
-            var products = await _context.Product
-                .Where(p => productIds.Contains(p.Id))
-                .ToDictionaryAsync(p => p.Id);
-
-            // 3. Attach products or remove invalid lines
-            cart.productLines.RemoveAll(line =>
-            {
-                if (!products.TryGetValue(line.ProductId, out var product))
-                    return true; // remove line if product no longer exists
-
-                line.Product = product; // attach navigation property
-                return false;
-            });
-
-            // 4. Save cleaned cart back to Redis
-            await _redis.StringSetAsync(
-                guestId,
-                JsonSerializer.Serialize(cart),
-                TimeSpan.FromHours(2));
+            await AttachProductsAndCleanAsync(cart);
+            await SaveCartAsync(cart);
 
             Cart = cart;
         }
 
         public async Task<IActionResult> OnPostAsync(
-    int[] ProductIds,
-    uint[] Quantities,
-    string? remove,
-    string? update)
+            int[] ProductIds,
+            uint[] Quantities,
+            string? remove,
+            string? update)
         {
-            // 1. Get guest cart key
-            if (!Request.Cookies.TryGetValue("GuestId", out var guestId))
+            var cart = await LoadCartAsync();
+            if (cart == null)
                 return RedirectToPage();
 
-            var cartJson = await _redis.StringGetAsync(guestId);
-            if (!cartJson.HasValue)
-                return RedirectToPage();
-
-            var cart = JsonSerializer.Deserialize<Cart>(cartJson!)!;
-            if (cart.productLines.Count == 0)
-                return RedirectToPage();
-
-            // 2. REMOVE
-            if (!string.IsNullOrWhiteSpace(remove) &&
-                int.TryParse(remove, out int removeId))
+            if (TryHandleRemove(cart, remove))
             {
-                cart.productLines.RemoveAll(l => l.ProductId == removeId);
+                await SaveCartAsync(cart);
+                return RedirectToPage();
             }
 
-            // 3. UPDATE
-            else if (!string.IsNullOrWhiteSpace(update))
+            if (!string.IsNullOrWhiteSpace(update))
             {
-                // Defensive check
-                if (ProductIds.Length != Quantities.Length)
-                    return BadRequest();
-
-                // Load all products once
-                var productIds = ProductIds.Distinct().ToList();
-
-                var products = await _context.Product
-                    .Where(p => productIds.Contains(p.Id))
-                    .ToDictionaryAsync(p => p.Id);
-
-                for (int i = 0; i < ProductIds.Length; i++)
-                {
-                    var line = cart.productLines
-                        .FirstOrDefault(l => l.ProductId == ProductIds[i]);
-
-                    if (line == null)
-                        continue;
-
-                    // Remove invalid quantities
-                    if (Quantities[i] == 0 || !products.ContainsKey(line.ProductId))
-                    {
-                        cart.productLines.Remove(line);
-                        continue;
-                    }
-                    //Check quantities validity
-                    if (Quantities[i] > line.Product.Available_Qty)
-                    {
-                        line.SelectedQty = line.Product.Available_Qty;
-                    }
-                    else
-                    {
-                        line.SelectedQty = Quantities[i];
-
-                    }
-                    line.Product = products[line.ProductId]; // trusted price
-
-
-                }
+                await UpdateQuantitiesAsync(cart, ProductIds, Quantities);
+                await SaveCartAsync(cart);
             }
-
-            // 4. Save cart back to Redis
-            await _redis.StringSetAsync(
-                guestId,
-                JsonSerializer.Serialize(cart),
-                TimeSpan.FromHours(2));
 
             return RedirectToPage();
         }
 
+        /* =========================
+         * Cart loading / persistence
+         * ========================= */
 
+        private async Task<Cart?> LoadCartAsync()
+        {
+            if (!Request.Cookies.TryGetValue("GuestId", out var guestId))
+                return null;
 
+            var cartJson = await _redis.StringGetAsync(guestId);
+            if (!cartJson.HasValue)
+                return null;
+
+            return JsonSerializer.Deserialize<Cart>(cartJson!);
+        }
+
+        private async Task SaveCartAsync(Cart cart)
+        {
+            var guestId = Request.Cookies["GuestId"]!;
+
+            await _redis.StringSetAsync(
+                guestId,
+                JsonSerializer.Serialize(cart),
+                TimeSpan.FromHours(CartTtlHours));
+        }
+
+        /* =========================
+         * Cart consistency logic
+         * ========================= */
+
+        private async Task AttachProductsAndCleanAsync(Cart cart)
+        {
+            if (cart.productLines.Count == 0)
+                return;
+
+            var products = await LoadProductsAsync(
+                cart.productLines.Select(l => l.ProductId));
+
+            /*
+             * This removes invalid cart lines while iterating safely.
+             * Using RemoveAll avoids mutation bugs caused by foreach removal.
+             */
+            cart.productLines.RemoveAll(line =>
+            {
+                if (!products.TryGetValue(line.ProductId, out var product))
+                    return true;
+
+                line.Product = product;
+                return false;
+            });
+        }
+
+        private async Task<Dictionary<int, Product>> LoadProductsAsync(IEnumerable<int> ids)
+        {
+            return await _context.Product
+                .Where(p => ids.Contains(p.Id))
+                .ToDictionaryAsync(p => p.Id);
+        }
+
+        /* =========================
+         * Cart mutation logic
+         * ========================= */
+
+        private static bool TryHandleRemove(Cart cart, string? remove)
+        {
+            if (string.IsNullOrWhiteSpace(remove))
+                return false;
+
+            if (!int.TryParse(remove, out var productId))
+                return false;
+
+            cart.productLines.RemoveAll(l => l.ProductId == productId);
+            return true;
+        }
+
+        private async Task UpdateQuantitiesAsync(
+            Cart cart,
+            int[] productIds,
+            uint[] quantities)
+        {
+            /*
+             * Mismatched arrays indicate a malformed request.
+             * This is treated as a programmer error, not user input.
+             */
+            if (productIds.Length != quantities.Length)
+                throw new InvalidOperationException("ProductIds and Quantities length mismatch.");
+
+            var products = await LoadProductsAsync(productIds);
+
+            for (int i = 0; i < productIds.Length; i++)
+            {
+                var line = cart.productLines
+                    .FirstOrDefault(l => l.ProductId == productIds[i]);
+
+                if (line == null)
+                    continue;
+
+                if (!products.TryGetValue(line.ProductId, out var product))
+                {
+                    // Product deleted after cart creation → remove line
+                    cart.productLines.Remove(line);
+                    continue;
+                }
+
+                /*
+                 * Quantity is clamped server-side to prevent:
+                 * - negative values
+                 * - stock manipulation
+                 *
+                 * Client-side validation is never trusted.
+                 * Reference:
+                 * https://owasp.org/www-community/attacks/Parameter_tampering
+                 */
+                if (quantities[i] == 0)
+                {
+                    cart.productLines.Remove(line);
+                    continue;
+                }
+
+                line.SelectedQty = Math.Min(quantities[i], product.Available_Qty);
+                line.Product = product;
+            }
+        }
     }
 }
