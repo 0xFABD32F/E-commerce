@@ -71,7 +71,7 @@ namespace E_commerce.Pages.produit
                 if (existingProduct == null)
                     return NotFound();
                 bool exists = await _context.Category
-                .AnyAsync(c => c.Name == Product.Category.Name);
+                .AnyAsync(c => c.Id == Product.CategoryId);
                 //Checking the submitted category
                 if (!exists)
                 {

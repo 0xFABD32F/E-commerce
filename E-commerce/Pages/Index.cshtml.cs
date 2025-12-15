@@ -126,7 +126,7 @@ namespace E_commerce.Pages
             // Save cart to Redis
             await _redis.StringSetAsync(guestId, JsonSerializer.Serialize(cart));
 
-            return RedirectToPage("Cart");
+            return RedirectToPage();
         }
     }
 }
