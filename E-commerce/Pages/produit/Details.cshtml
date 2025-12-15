@@ -2,45 +2,142 @@
 @model E_commerce.Pages.produit.DetailsModel
 
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Product Details";
 }
 
-<h1>Details</h1>
+<style>
+    :root {
+        --bg: #f6f7fb;
+        --card: #ffffff;
+        --text: #1f2937;
+        --muted: #6b7280;
+        --primary: #2563eb;
+        --border: #e5e7eb;
+        --radius: 16px;
+    }
 
-<div>
-    <h4>Product</h4>
-    <hr />
-    <dl class="row">
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Product.Name)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Product.Name)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Product.Description)
-        </dt>
-        <dd class="col-sm-10" style="white-space: pre-line;">
-            @Model.Product.Description
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Product.Price)
-        </dt>
-        <dd class="col-sm-10">
-            @Html.DisplayFor(model => model.Product.Price)
-        </dd>
-        <dt class="col-sm-2">
-            @Html.DisplayNameFor(model => model.Product.ImgPath)
-        </dt>
-        <dd class="col-sm-10">
-            @if (!string.IsNullOrEmpty(Model.Product.ImgPath))
-            {
-                <img src="~/@Model.Product.ImgPath" alt="@Model.Product.Name" style="max-width:200px; max-height:200px;" />
-            }
-            else
-            {
-                <span>No image</span>
-            }
-        </dd>
-    </dl>
+    body {
+        background-color: var(--bg);
+        color: var(--text);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .product-wrapper {
+        max-width: 1000px;
+        margin: 3rem auto;
+        padding: 1rem;
+    }
+
+    .product-card {
+        background: var(--card);
+        border-radius: var(--radius);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+    }
+
+    .product-grid {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 2rem;
+        padding: 2rem;
+    }
+
+    /* Image */
+    .product-image {
+        background: #f3f4f6;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+        .product-image img {
+            max-width: 100%;
+            max-height: 300px;
+            object-fit: contain;
+        }
+
+    .no-image {
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    /* Details */
+    .product-details h1 {
+        font-size: 1.8rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .price {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: var(--primary);
+        margin-bottom: 1.5rem;
+    }
+
+    .section {
+        margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 0.85rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--muted);
+        margin-bottom: 0.4rem;
+    }
+
+    .description {
+        white-space: pre-line;
+        line-height: 1.6;
+        color: #374151;
+    }
+
+    /* Responsive */
+    @@media (max-width: 768px) {
+        .product-grid
+
+    {
+        grid-template-columns: 1fr;
+    }
+
+    }</style>
+
+<div class="product-wrapper">
+    <div class="product-card">
+        <div class="product-grid">
+
+            <!-- Product Image -->
+            <div class="product-image">
+                @if (!string.IsNullOrEmpty(Model.Product.ImgPath))
+                {
+                    <img src="~/@Model.Product.ImgPath" alt="@Model.Product.Name" />
+                }
+                else
+                {
+                    <span class="no-image">No image available</span>
+                }
+            </div>
+
+            <!-- Product Details -->
+            <div class="product-details">
+                <h1>@Model.Product.Name</h1>
+
+                <div class="price">
+                    @Html.DisplayFor(model => model.Product.Price) DH
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Description</div>
+                    <div class="description">
+                        @Model.Product.Description
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
 </div>
