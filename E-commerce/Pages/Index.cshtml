@@ -1,157 +1,632 @@
 ﻿@page
 @model E_commerce.Pages.IndexModel
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Products";
+    string selectedCategoryId = Request.Query["categoryId"];
+    string selectedStockStatus = Request.Query["stockStatus"];
+    string minPriceValue = Request.Query["minPrice"];
+    string maxPriceValue = Request.Query["maxPrice"];
 }
 
-<style>
-    .products-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 24px;
-        padding: 20px 0;
-    }
-
-    .product-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        overflow: hidden;
-        transition: transform 0.2s, box-shadow 0.2s;
-        background: white;
-        display: flex;
-        flex-direction: column;
-    }
-
-        .product-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - E_commerce</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
         }
 
-    .product-link {
-        text-decoration: none;
-        color: inherit;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-    }
-
-    .product-image {
-        width: 100%;
-        height: 200px;
-        object-fit: cover;
-        background: #f5f5f5;
-    }
-
-    .product-info {
-        padding: 16px;
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .product-name {
-        font-size: 18px;
-        font-weight: 600;
-        margin-bottom: 8px;
-        color: #333;
-    }
-
-    .product-price {
-        font-size: 20px;
-        font-weight: 700;
-        color: #2c5f2d;
-        margin-bottom: 16px;
-    }
-
-    .product-actions {
-        margin-top: auto;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-    .quantity-selector {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-        .quantity-selector label {
-            font-size: 14px;
-            color: #666;
+        /* Header Styles */
+        .main-header {
+            background: white;
+            border-bottom: 2px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
 
-        .quantity-selector input {
-            width: 60px;
-            padding: 6px 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+        .logo-image {
+            height: 45px;
+            width: auto;
+        }
+
+        .cart-icon-wrapper {
+            position: relative;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+            .cart-icon-wrapper:hover {
+                background: #f3f4f6;
+            }
+
+        /* Filter Sidebar - Fixed */
+        .filters-sidebar {
+            background: white;
+            padding: 24px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+            position: fixed;
+            top: 77px;
+            left: 0;
+            width: 280px;
+            height: calc(100vh - 77px);
+            overflow-y: auto;
+            z-index: 50;
+        }
+
+        .filter-section {
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+            .filter-section:last-child {
+                border-bottom: none;
+                margin-bottom: 0;
+            }
+
+        .filter-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+            .filter-title svg {
+                width: 18px;
+                height: 18px;
+                color: #6b7280;
+            }
+
+        /* Category Filters */
+        .category-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .category-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            color: #4b5563;
+        }
+
+            .category-item:hover {
+                background: #f9fafb;
+                color: #1f2937;
+            }
+
+            .category-item.active {
+                background: #eff6ff;
+                border-color: #3b82f6;
+                color: #3b82f6;
+                font-weight: 600;
+            }
+
+            .category-item input[type="radio"] {
+                margin-right: 10px;
+                width: 18px;
+                height: 18px;
+                cursor: pointer;
+            }
+
+        /* Price Filter */
+        .price-inputs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .price-input-group {
+            flex: 1;
+        }
+
+            .price-input-group label {
+                font-size: 12px;
+                color: #6b7280;
+                margin-bottom: 4px;
+                display: block;
+                font-weight: 500;
+            }
+
+            .price-input-group input {
+                width: 100%;
+                padding: 8px 12px;
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+
+                .price-input-group input:focus {
+                    outline: none;
+                    border-color: #3b82f6;
+                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+                }
+
+        /* Stock Filter */
+        .stock-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .stock-option {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid #e5e7eb;
+        }
+
+            .stock-option:hover {
+                border-color: #d1d5db;
+                background: #f9fafb;
+            }
+
+            .stock-option input[type="radio"] {
+                margin-right: 10px;
+                width: 18px;
+                height: 18px;
+                cursor: pointer;
+            }
+
+            .stock-option span {
+                cursor: pointer;
+                font-size: 14px;
+                color: #4b5563;
+            }
+
+        .stock-badge {
+            margin-left: auto;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+            .stock-badge.in-stock {
+                background: #dcfce7;
+                color: #166534;
+            }
+
+            .stock-badge.out-of-stock {
+                background: #fee2e2;
+                color: #991b1b;
+            }
+
+        /* Apply Filters Button */
+        .apply-filters-btn {
+            width: 100%;
+            padding: 12px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 24px;
+        }
+
+            .apply-filters-btn:hover {
+                background: #2563eb;
+            }
+
+        .reset-filters-btn {
+            width: 100%;
+            padding: 10px;
+            background: transparent;
+            color: #6b7280;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 12px;
+        }
+
+            .reset-filters-btn:hover {
+                background: #f9fafb;
+                color: #1f2937;
+            }
+
+        /* Main Content Area - Adjusted for fixed sidebar */
+        .main-content {
+            margin-left: 280px;
+            padding: 24px;
+        }
+
+        /* Products Grid */
+        .products-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .product-card {
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            background: white;
+            display: flex;
+            flex-direction: column;
+        }
+
+            .product-card:hover {
+                transform: translateY(-4px);
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            }
+
+        .product-link {
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-image-wrapper {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            transition: transform 0.3s;
+        }
+
+        .product-card:hover .product-image {
+            transform: scale(1.05);
+        }
+
+        .stock-badge-overlay {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .product-info {
+            padding: 20px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .product-category {
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+
+        .product-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1f2937;
+            line-height: 1.4;
+        }
+
+        .product-price {
+            font-size: 24px;
+            font-weight: 700;
+            color: #2c5f2d;
+            margin-top: auto;
+        }
+
+        .product-actions {
+            padding: 16px 20px;
+            border-top: 1px solid #f3f4f6;
+        }
+
+        .add-to-cart-btn {
+            width: 100%;
+            padding: 12px;
+            background-color: #2c5f2d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+            .add-to-cart-btn:hover {
+                background-color: #1e4620;
+                transform: translateY(-1px);
+            }
+
+            .add-to-cart-btn:disabled {
+                background-color: #9ca3af;
+                cursor: not-allowed;
+                transform: none;
+            }
+
+        .out-of-stock-message {
+            padding: 12px;
+            background: #fee2e2;
+            color: #991b1b;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
             text-align: center;
+        }
+
+        .no-image {
+            width: 100%;
+            height: 220px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+            color: #9ca3af;
             font-size: 14px;
         }
 
-    .add-to-cart-btn {
-        width: 100%;
-        padding: 10px 16px;
-        background-color: #2c5f2d;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        font-size: 16px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background-color 0.2s;
-    }
-
-        .add-to-cart-btn:hover {
-            background-color: #1e4620;
+        /* Results Header */
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
 
-    .no-image {
-        width: 100%;
-        height: 200px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #f5f5f5;
-        color: #999;
-    }
-</style>
+        .results-count {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+        }
 
-<h1>Products</h1>
+        .active-filters {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-tag {
+            padding: 6px 12px;
+            background: #eff6ff;
+            color: #3b82f6;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* Mobile Responsive */
+        @@media (max-width: 768px) {
+            .filters-sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                margin-bottom: 24px;
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .results-header {
+                flex-direction: column;
+                gap: 12px;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
 
 
-<div class="products-container">
-    @foreach (var item in Model.Product)
-    {
-        <div class="product-card">
-            <a href="produit/Details?id=@item.Id" class="product-link">
-                @if (!string.IsNullOrEmpty(item.ImgPath))
-                {
-                    <img src="~/@item.ImgPath" alt="@item.Name" class="product-image" />
-                }
-                else
-                {
-                    <div class="no-image">No image available</div>
-                }
+    <!-- Filters Sidebar - Fixed on left -->
+    <div class="filters-sidebar">
+        <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 24px; color: #1f2937;">Filters</h2>
 
-                <div class="product-info">
-                    <h3 class="product-name">@item.Name</h3>
-                    <div class="product-price">@item.Price DH</div>                    
-                                         
-                    
+        <form method="get" asp-page="/Index">
+            <!-- Category Filter -->
+            <div class="filter-section">
+                <div class="filter-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    Categories
                 </div>
-            </a>
-            <form method="post" asp-page-handler="AddToCart">
-                <input type="hidden" name="ProductId" value="@item.Id" />
-                <div class="quantity-selector">
-                    <label for="quantity-@item.Id">Quantity:</label>
-                    <input type="number" id="quantity-@item.Id" name="Quantity" min="1" value="1" />
+                <div class="category-list">
+                    <label class="category-item @(string.IsNullOrEmpty(selectedCategoryId) ? "active" : "")">
+                        <input type="radio" name="categoryId" value="" checked="@(string.IsNullOrEmpty(selectedCategoryId))" />
+                        All Categories
+                    </label>
+                    @foreach (var category in Model.Categories)
+                    {
+                        <label class="category-item @(selectedCategoryId == category.Id.ToString() ? "active" : "")">
+                            <input type="radio" name="categoryId" value="@category.Id" checked="@(selectedCategoryId == category.Id.ToString())" />
+                            @category.Name
+                        </label>
+                    }
                 </div>
-                <button type="submit" class="add-to-cart-btn">Add to Cart</button>
-            </form>
+            </div>
 
+            <!-- Price Filter -->
+            <div class="filter-section">
+                <div class="filter-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Price Range
+                </div>
+                <div class="price-inputs">
+                    <div class="price-input-group">
+                        <label>Min Price (DH)</label>
+                        <input type="number" name="minPrice" value="@minPriceValue" placeholder="0" min="0" step="0.01" />
+                    </div>
+                    <div class="price-input-group">
+                        <label>Max Price (DH)</label>
+                        <input type="number" name="maxPrice" value="@maxPriceValue" placeholder="10000" min="0" step="0.01" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock Filter -->
+            <div class="filter-section">
+                <div class="filter-title">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    Availability
+                </div>
+                <div class="stock-options">
+                    <label class="stock-option">
+                        <input type="radio" name="stockStatus" value="" checked="@(string.IsNullOrEmpty(selectedStockStatus))" />
+                        <span>All Products</span>
+                    </label>
+                    <label class="stock-option">
+                        <input type="radio" name="stockStatus" value="instock" checked="@(selectedStockStatus == "instock")" />
+                        <span>In Stock</span>
+                        <span class="stock-badge in-stock">Available</span>
+                    </label>
+                    <label class="stock-option">
+                        <input type="radio" name="stockStatus" value="outofstock" checked="@(selectedStockStatus == "outofstock")" />
+                        <span>Out of Stock</span>
+                        <span class="stock-badge out-of-stock">Unavailable</span>
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="apply-filters-btn">Apply Filters</button>
+            <a href="@Url.Page("/Index")" class="reset-filters-btn" style="display: block; text-align: center; text-decoration: none;">Reset All Filters</a>
+        </form>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+        <div class="results-header">
+            <div class="results-count">
+                @Model.Product.Count Products Found
+            </div>
+            @if (!string.IsNullOrEmpty(selectedCategoryId) ||
+                        !string.IsNullOrEmpty(minPriceValue) ||
+                        !string.IsNullOrEmpty(maxPriceValue) ||
+                        !string.IsNullOrEmpty(selectedStockStatus))
+            {
+                <div class="active-filters">
+                    <span style="font-size: 14px; color: #6b7280;">Active Filters:</span>
+                    @if (!string.IsNullOrEmpty(selectedCategoryId))
+                    {
+                        var selectedCategory = Model.Categories.FirstOrDefault(c => c.Id.ToString() == selectedCategoryId);
+                        if (selectedCategory != null)
+                        {
+                            <span class="filter-tag">@selectedCategory.Name</span>
+                        }
+                    }
+                    @if (!string.IsNullOrEmpty(minPriceValue) || !string.IsNullOrEmpty(maxPriceValue))
+                    {
+                        <span class="filter-tag">
+                            @minPriceValue DH - @maxPriceValue DH
+                        </span>
+                    }
+                    @if (selectedStockStatus == "instock")
+                    {
+                        <span class="filter-tag">In Stock</span>
+                    }
+                    @if (selectedStockStatus == "outofstock")
+                    {
+                        <span class="filter-tag">Out of Stock</span>
+                    }
+                </div>
+            }
         </div>
-    }
-</div>
 
+        <div class="products-container">
+            @foreach (var item in Model.Product)
+            {
+                <div class="product-card">
+                    <a href="produit/Details?id=@item.Id" class="product-link">
+                        <div class="product-image-wrapper">
+                            @if (!string.IsNullOrEmpty(item.ImgPath))
+                            {
+                                <img src="~/@item.ImgPath" alt="@item.Name" class="product-image" />
+                            }
+                            else
+                            {
+                                <div class="no-image">
+                                    <svg width="48" height="48" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z" />
+                                    </svg>
+                                </div>
+                            }
+                            <span class="stock-badge-overlay @(item.Available_Qty > 0 ? "in-stock" : "out-of-stock")">
+                                @(item.Available_Qty > 0 ? "In Stock" : "Out of Stock")
+                            </span>
+                        </div>
+                        <div class="product-info">
+                            <div class="product-category">@item.Category?.Name</div>
+                            <h3 class="product-name">@item.Name</h3>
+                            <div class="product-price">@item.Price.ToString("F2") DH</div>
+                        </div>
+                    </a>
+                    <div class="product-actions">
+                        @if (item.Available_Qty == 0)
+                        {
+                            <div class="out-of-stock-message">
+                                Out of Stock - Contact Supplier
+                            </div>
+                        }
+                        else
+                        {
+                            <form method="post" asp-page-handler="AddToCart">
+                                <input type="hidden" name="ProductId" value="@item.Id" />
+                                <button type="submit" class="add-to-cart-btn">Add to Cart</button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        @if (!Model.Product.Any())
+        {
+            <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 12px; margin-top: 24px;">
+                <svg width="64" height="64" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin: 0 auto 20px; color: #9ca3af;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 style="font-size: 20px; color: #4b5563; margin-bottom: 12px;">No Products Found</h3>
+                <p style="color: #9ca3af; margin-bottom: 24px;">Try adjusting your filters to see more results</p>
+                <a href="@Url.Page("/Index")" style="padding: 12px 24px; background: #3b82f6; color: white; border-radius: 8px; text-decoration: none; font-weight: 600;">Clear All Filters</a>
+            </div>
+        }
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+</body>
+</html>

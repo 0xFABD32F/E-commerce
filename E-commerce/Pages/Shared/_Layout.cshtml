@@ -7,7 +7,34 @@
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/E_commerce.styles.css" asp-append-version="true" />
+    
+    <style>
+        
+        /* Header Styles */
+        .main-header {
+            background: white;
+            border-bottom: 2px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-image {
+            height: 45px;
+            width: auto;
+        }
+
+        .cart-icon-wrapper {
+            position: relative;
+            padding: 8px;
+            border-radius: 8px;
+            transition: background 0.2s;
+        }
+
+            .cart-icon-wrapper:hover {
+                background: #f3f4f6;
+            }
+    </style>
 </head>
 <body>
 <header class="main-header shadow-sm">
@@ -24,6 +51,10 @@
                     aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
+                <a asp-page="/Cart">
+                    <img src="~/logo/shopping-cart-outline-svgrepo-com.svg" height="24" width="24" alt="Cart" />                
+                </a>
+
             
         </div>
     </nav>

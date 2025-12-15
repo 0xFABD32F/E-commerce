@@ -30,7 +30,7 @@ else
                             <td>@Model.Cart.productLines[i].Product.Name</td>
                             <td>@Model.Cart.productLines[i].Product.Price</td>
                             <td>
-                                <input type="number" name="Quantities" value="@Model.Cart.productLines[i].SelectedQty" min="1" style="width:60px;" />
+                                <input type="number" name="Quantities" value="@Model.Cart.productLines[i].SelectedQty" min="1" max="@Model.Cart.productLines[i].Product.Available_Qty" style="width:60px;" />
                                 <input type="hidden" name="ProductIds" value="@Model.Cart.productLines[i].ProductId" />
                             </td>
                             <td>@(Model.Cart.productLines[i].Product.Price * Model.Cart.productLines[i].SelectedQty) DH</td>

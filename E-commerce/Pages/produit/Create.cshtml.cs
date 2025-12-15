@@ -1,14 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using E_commerce.Data;
+using E_commerce.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using E_commerce.Data;
-using E_commerce.Models;
-using Microsoft.AspNetCore.Http;
+using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace E_commerce.Pages.produit
 {
@@ -29,7 +30,7 @@ namespace E_commerce.Pages.produit
 
         public IActionResult OnGet()
         {
-            //Categories = new SelectList(_context.Category, "Id", "Name");
+            Categories = new SelectList(_context.Category, "Id", "Name");
             return Page();
         }
 
@@ -43,51 +44,54 @@ namespace E_commerce.Pages.produit
 
         // For more information, see https://aka.ms/RazorPagesCRUD.
         public async Task<IActionResult> OnPostAsync()
-        {
+{
             if (!ModelState.IsValid)
             {
+                Categories = new SelectList(_context.Category, "Id", "Name");
+                return Page();
+            }
+
+            bool categoryExists = await _context.Category
+                .AnyAsync(c => c.Id == Product.CategoryId);
+
+            if (!categoryExists)
+            {
+                ModelState.AddModelError("Product.CategoryId",
+                    "This category does not exist.");
+                Categories = new SelectList(_context.Category, "Id", "Name");
                 return Page();
             }
 
             if (ImageFile != null && ImageFile.Length > 0)
             {
-                // Validate file type
                 var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" };
                 var fileExtension = Path.GetExtension(ImageFile.FileName).ToLower();
 
                 if (!allowedExtensions.Contains(fileExtension))
                 {
                     ModelState.AddModelError("ImageFile", "Only image files are allowed.");
+                    Categories = new SelectList(_context.Category, "Id", "Name");
                     return Page();
                 }
 
-                // Create unique filename
-                var fileName = Guid.NewGuid().ToString() + fileExtension;
+                var fileName = Guid.NewGuid() + fileExtension;
                 var imagePath = Path.Combine(_webHostEnvironment.WebRootPath, "images");
 
-                // Ensure directory exists
-                if (!Directory.Exists(imagePath))
-                {
-                    Directory.CreateDirectory(imagePath);
-                }
+                Directory.CreateDirectory(imagePath);
 
                 var filePath = Path.Combine(imagePath, fileName);
 
-                // Save file
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await ImageFile.CopyToAsync(fileStream);
-                }
+                using var fileStream = new FileStream(filePath, FileMode.Create);
+                await ImageFile.CopyToAsync(fileStream);
 
-                // Store relative path in database
-                Product.ImgPath = Path.Combine("images", fileName).Replace("\\", "/");
-            }
+                Product.ImgPath = $"images/{fileName}";
+            }    
+                _context.Product.Add(Product);
+                await _context.SaveChangesAsync();
 
-            _context.Product.Add(Product);
-            await _context.SaveChangesAsync();
-
-            return RedirectToPage("../Index");
+                return RedirectToPage("./MyListedProducts");
         }
+
       
     }
 }

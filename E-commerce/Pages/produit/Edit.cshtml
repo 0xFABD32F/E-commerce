@@ -30,6 +30,18 @@
                 <span asp-validation-for="Product.Price" class="text-danger"></span>
             </div>
             <div class="form-group">
+                <label asp-for="Product.Available_Qty" class="control-label"></label>
+                <input asp-for="Product.Available_Qty" class="form-control" required />
+                <span asp-validation-for="Product.Available_Qty" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Product.CategoryId" class="control-label">Category</label>
+                <select asp-for="Product.CategoryId" class="form-control" asp-items="Model.Categories" required>
+                    <option value="">-- Select Category --</option>
+                </select>
+                <span asp-validation-for="Product.CategoryId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
                 <label class="control-label">Current Image</label>
                 @if (!string.IsNullOrEmpty(Model.Product.ImgPath))
                 {
@@ -60,6 +72,6 @@
 </div>
 
 <div>
-    <a asp-page="./Index">Back to List</a>
+    <a asp-page="./MyListedProducts">Back to List</a>
 </div>
 

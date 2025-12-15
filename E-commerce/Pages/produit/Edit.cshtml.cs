@@ -26,7 +26,7 @@ namespace E_commerce.Pages.produit
             _context = context;
             _webHostEnvironment = webHostEnvironment;
         }
-
+        public SelectList Categories { get; set; }
         [BindProperty]
         public Product Product { get; set; } = default!;
 
@@ -46,6 +46,7 @@ namespace E_commerce.Pages.produit
                 return NotFound();
             }
             Product = product;
+            Categories = new SelectList(_context.Category, "Id", "Name");
             return Page();  // ← Tells framework to render Edit.cshtml
         }
         public async Task<IActionResult> OnPostAsync()
@@ -69,11 +70,22 @@ namespace E_commerce.Pages.produit
                 var existingProduct = await _context.Product.FindAsync(Product.Id);
                 if (existingProduct == null)
                     return NotFound();
+                bool exists = await _context.Category
+                .AnyAsync(c => c.Name == Product.Category.Name);
+                //Checking the submitted category
+                if (!exists)
+                {
+                    ModelState.AddModelError("Product.CategoryId",
+                        "This category doesn't exist.");
+                    return Page();
+                }
 
                 // Update scalar properties
                 existingProduct.Name = Product.Name;
                 existingProduct.Price = Product.Price;
                 existingProduct.Description = Product.Description;
+                existingProduct.Available_Qty = Product.Available_Qty;
+                existingProduct.CategoryId = Product.CategoryId;
 
                 if (ImageFile != null && ImageFile.Length > 0)
                 {
@@ -111,8 +123,8 @@ namespace E_commerce.Pages.produit
 
                     // Save relative path in DB
                     existingProduct.ImgPath = $"images/{fileName}";
-                }           
-
+                }             
+                
                 // Save changes in DB
                 await _context.SaveChangesAsync();
             }
@@ -129,7 +141,7 @@ namespace E_commerce.Pages.produit
                 return Page();
             }
 
-            return RedirectToPage("./Index");
+            return RedirectToPage("./MyListedProducts");
         }
 
         private bool ProductExists(int id)

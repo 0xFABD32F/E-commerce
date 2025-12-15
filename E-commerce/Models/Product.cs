@@ -33,11 +33,12 @@ namespace E_commerce.Models
         public decimal Price { get; set; }
         public string? ImgPath { get; set; }
 
-        //[Required(ErrorMessage = "Category is required")]
-        //public int CategoryId { get; set; }
+        [Required(ErrorMessage = "Category is required")]
+        public int CategoryId { get; set; }
         
-        //public Category Category { get; set; }
+        public Category? Category { get; set; }
         [Required(ErrorMessage ="Available quantity is required")]
+        [Range(1,1000000000)]
         public uint Available_Qty {  get; set; }
 
         public bool IsAvailable(uint Qty)

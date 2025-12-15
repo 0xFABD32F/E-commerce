@@ -118,9 +118,19 @@ namespace E_commerce.Pages
                         cart.productLines.Remove(line);
                         continue;
                     }
+                    //Check quantities validity
+                    if (Quantities[i] > line.Product.Available_Qty)
+                    {
+                        line.SelectedQty = line.Product.Available_Qty;
+                    }
+                    else
+                    {
+                        line.SelectedQty = Quantities[i];
 
-                    line.SelectedQty = Quantities[i];
+                    }
                     line.Product = products[line.ProductId]; // trusted price
+
+
                 }
             }
 
