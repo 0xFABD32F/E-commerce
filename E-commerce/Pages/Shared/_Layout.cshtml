@@ -1,4 +1,5 @@
 ﻿<!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -7,9 +8,9 @@
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    
+
     <style>
-        
+
         /* Header Styles */
         .main-header {
             background: white;
@@ -37,45 +38,67 @@
     </style>
 </head>
 <body>
-<header class="main-header shadow-sm">
-    <nav class="navbar navbar-expand-lg navbar-light bg-white">
-        <div class="container-fluid px-4">
+    <header class="main-header shadow-sm">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white">
+            <div class="container-fluid px-4">
 
-            <!-- Logo -->
-            <a class="navbar-brand d-flex align-items-center gap-2" asp-area="" asp-page="/Index">
-                <img src="~/logo/treble-clef-svgrepo-com.svg" alt="Amazing Logo" class="logo-image" />
-                
-            </a>
-
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
-                    aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-                <a asp-page="/Cart">
-                    <img src="~/logo/shopping-cart-outline-svgrepo-com.svg" height="24" width="24" alt="Cart" />                
+                <!-- Logo -->
+                <a class="navbar-brand d-flex align-items-center gap-2" asp-page="/Index">
+                    <img src="~/logo/treble-clef-svgrepo-com.svg" class="logo-image" />
                 </a>
 
-            
-        </div>
-    </nav>
-</header>
-<div class="container">
-    <main role="main" class="pb-3">
-        @RenderBody()
-    </main>
-</div>
+                <div class="d-flex align-items-center gap-3">
 
-<footer class="border-top footer text-muted">
+                    <!-- Cart -->
+                    <a asp-page="/Cart" class="cart-icon-wrapper">
+                        <img src="~/logo/shopping-cart-outline-svgrepo-com.svg" height="24" width="24" />
+                    </a>
+
+                    @if (!User.Identity.IsAuthenticated)
+                    {
+                        <!-- LOGIN -->
+                        <a asp-page="/Login/Login">
+                            <img src="~/logo/login-svgrepo-com.svg" height="24" width="24" />
+                           
+                        </a>
+                    }
+                    else
+                    {
+                        <!-- MY ACCOUNT -->
+                        <a asp-page="/user/Details">
+                            <img src="~/logo/account-circle-svgrepo-com.svg" height="24" width="24" />                            
+                        </a>
+
+                        <!-- LOGOUT -->
+                        <form method="post" asp-page="login/Logout">
+                            <button type="submit">
+                                <img src="~/logo/logout-svgrepo-com.svg" height="24" width="24" />
+                                Logout
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </nav>
+
+    </header>
     <div class="container">
-        &copy; 2025 - Amazing -
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
     </div>
-</footer>
 
-<script src="~/lib/jquery/dist/jquery.min.js"></script>
-<script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-<script src="~/js/site.js" asp-append-version="true"></script>
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            &copy; 2025 - Amazing -
+        </div>
+    </footer>
 
-@await RenderSectionAsync("Scripts", required: false)
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+
+    @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>
 

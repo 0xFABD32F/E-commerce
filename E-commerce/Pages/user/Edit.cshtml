@@ -1,0 +1,70 @@
+﻿@page
+@model E_commerce.Pages.user.EditModel
+
+@{
+    ViewData["Title"] = "Edit";
+}
+
+<h1>Edit</h1>
+
+<h4>User</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="User.ID" />
+            <div class="form-group">
+<span class="text-danger">*</span>
+                <label asp-for="User.Username" class="control-label"></label>
+                <input asp-for="User.Username" class="form-control" aria-required="true"/>
+                <span asp-validation-for="User.Username" class="text-danger"></span>
+            </div>          
+            <div class="form-group">
+<span class="text-danger">*</span>
+                <label asp-for="User.Email" class="control-label"></label>
+                <input asp-for="User.Email" class="form-control" aria-required="true"/>
+                <span asp-validation-for="User.Email" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+<span class="text-danger">*</span>
+                <label asp-for="User.Address" class="control-label"></label>
+                <input asp-for="User.Address" class="form-control" aria-required="true"/>
+                <span asp-validation-for="User.Address" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+<span class="text-danger">*</span>
+                <label asp-for="User.City" class="control-label"></label>
+                <input asp-for="User.City" class="form-control" aria-required="true"/>
+                <span asp-validation-for="User.City" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+<span class="text-danger">*</span>
+                <label asp-for="User.ZipCode" class="control-label"></label>
+                <input asp-for="User.ZipCode" class="form-control" aria-required="true"/>
+                <span asp-validation-for="User.ZipCode" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.CreatedDate" class="control-label"></label>
+                <input asp-for="User.CreatedDate" class="form-control" />
+                <span asp-validation-for="User.CreatedDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="User.UpdatedDate" class="control-label"></label>
+                <input asp-for="User.UpdatedDate" class="form-control" />
+                <span asp-validation-for="User.UpdatedDate" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Save" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-page="./Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

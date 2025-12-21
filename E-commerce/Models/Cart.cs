@@ -8,6 +8,7 @@ namespace E_commerce.Models
         public decimal SubTotal {  get; set; }
         public List<productLine> productLines { get; set; } = new List<productLine>();
 
+        public DateTime CreatedDate { get; set; } = DateTime.UtcNow;       //After payment is done, We save Cart to database
         public decimal CalculateSubTotal() => productLines.Sum(pl => pl.LineTotal());
        
         public void AddToCart(productLine productLine)

@@ -1,0 +1,99 @@
+﻿@page
+@model E_commerce.Pages.user.DetailsModel
+
+@{
+    ViewData["Title"] = "User Details";
+}
+
+<div class="user-details-container">
+    <div class="user-card shadow-sm">
+        <h2 class="user-title">Account Details</h2>
+        <hr />
+
+        <dl class="row user-info">
+            <dt class="col-sm-4">Username</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.user.Username)</dd>
+
+            <dt class="col-sm-4">Email</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.user.Email)</dd>
+
+            <dt class="col-sm-4">Address</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.user.Address)</dd>
+
+            <dt class="col-sm-4">City</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.user.City)</dd>
+
+            <dt class="col-sm-4">Zip Code</dt>
+            <dd class="col-sm-8">@Html.DisplayFor(model => model.user.ZipCode)</dd>
+        </dl>
+
+        <div class="user-actions">
+            <a asp-page="./Edit"  class="btn btn-primary btn-edit">
+                Edit Account
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Container */
+    .user-details-container {
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 40px 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 70vh;
+        background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
+    }
+
+    /* Card */
+    .user-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 30px 25px;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+
+    /* Titles */
+    .user-title {
+        font-size: 26px;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #1f2937;
+    }
+
+    /* User Info List */
+    .user-info dt {
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 4px;
+    }
+
+    .user-info dd {
+        margin-bottom: 12px;
+        color: #4b5563;
+    }
+
+    /* Actions */
+    .user-actions {
+        margin-top: 20px;
+        text-align: right;
+    }
+
+    .btn-edit {
+        padding: 10px 20px;
+        font-size: 15px;
+        font-weight: 500;
+        border-radius: 8px;
+        transition: all 0.2s ease-in-out;
+    }
+
+        .btn-edit:hover {
+            background-color: #2563eb;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+            color: #fff;
+        }
+</style>

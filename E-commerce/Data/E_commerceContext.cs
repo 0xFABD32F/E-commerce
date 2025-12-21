@@ -19,6 +19,7 @@ namespace E_commerce.Data
         
         public DbSet<E_commerce.Models.productLine> ProductLine { get; set; } = default!;
         public DbSet<E_commerce.Models.Category> Category { get; set; } = default!;
+        public DbSet<E_commerce.Models.User> User { get; set; } = default!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -31,6 +32,14 @@ namespace E_commerce.Data
                 .HasMany(c => c.productLines)
                 .WithOne()
                 .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<User>(entity =>
+            {
+                entity.HasIndex(u => u.Username)
+                      .IsUnique();
+
+                entity.HasIndex(u => u.Email)
+                      .IsUnique();
+            });
 
         }
 

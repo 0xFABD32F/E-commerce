@@ -1,0 +1,160 @@
+﻿@page
+@model E_commerce.Pages.login.CreateModel
+@{
+    ViewData["Title"] = "Create Account";
+}
+
+<div class="register-container">
+    <div class="register-card shadow-sm">
+        <h2 class="register-title">Create Your Account</h2>
+        <p class="register-subtitle">Sign up to get started</p>
+
+        <form method="post" class="register-form">
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+            <div class="form-group">
+                <label asp-for="Input.Username">Username</label>
+                <input asp-for="Input.Username" class="form-control" placeholder="Enter your username" required />
+                <span asp-validation-for="Input.Username" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Input.Email">Email</label>
+                <input asp-for="Input.Email" type="email" class="form-control" placeholder="Enter your email" required />
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Input.PasswordHash">Password</label>
+                <input asp-for="Input.PasswordHash" type="password" class="form-control" placeholder="Enter a strong password" required />
+                <span asp-validation-for="Input.PasswordHash" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Input.Address">Address</label>
+                <input asp-for="Input.Address" class="form-control" placeholder="Enter your address" required />
+                <span asp-validation-for="Input.Address" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Input.City">City</label>
+                <input asp-for="Input.City" class="form-control" placeholder="Enter your city" required />
+                <span asp-validation-for="Input.City" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Input.ZipCode">Zip Code</label>
+                <input asp-for="Input.ZipCode" class="form-control" placeholder="Enter your zip code" required />
+                <span asp-validation-for="Input.ZipCode" class="text-danger"></span>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-register">Create Account</button>
+        </form>
+
+        <div class="register-footer">
+            <p>Already have an account? <a asp-page="/Login/Login" class="link-primary">Login here</a></p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
+
+<style>
+    /* Container */
+    .register-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+        background: linear-gradient(135deg, #f0f4f8, #d9e2ec);
+        padding: 20px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    /* Card */
+    .register-card {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 40px 30px;
+        width: 100%;
+        max-width: 450px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+
+    /* Titles */
+    .register-title {
+        font-size: 28px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: #1f2937;
+    }
+
+    .register-subtitle {
+        font-size: 14px;
+        color: #6b7280;
+        margin-bottom: 30px;
+    }
+
+    /* Form */
+    .register-form .form-group {
+        margin-bottom: 20px;
+        text-align: left;
+    }
+
+    .register-form label {
+        font-weight: 500;
+        margin-bottom: 6px;
+        display: block;
+        color: #374151;
+    }
+
+    .register-form input.form-control {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s ease-in-out;
+    }
+
+        .register-form input.form-control:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.2);
+            outline: none;
+        }
+
+    /* Button */
+    .btn-register {
+        width: 100%;
+        padding: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        border-radius: 8px;
+        transition: all 0.2s ease-in-out;
+    }
+
+        .btn-register:hover {
+            background-color: #2563eb;
+            box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+        }
+
+    /* Footer */
+    .register-footer {
+        margin-top: 20px;
+        font-size: 14px;
+        color: #6b7280;
+    }
+
+        .register-footer a.link-primary {
+            color: #3b82f6;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+            .register-footer a.link-primary:hover {
+                text-decoration: underline;
+            }
+</style>
