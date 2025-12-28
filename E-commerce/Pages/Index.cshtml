@@ -9,6 +9,7 @@
 }
 
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
     <meta charset="utf-8" />
@@ -16,6 +17,52 @@
     <title>@ViewData["Title"] - E_commerce</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const productLinks = document.querySelectorAll('.product-link');
+            
+
+            productLinks.forEach(link => {
+                link.addEventListener('click', function(event) {
+                    event.preventDefault();
+
+                    const dto = {
+                        id: this.dataset.id,
+                        name: this.dataset.name,                        
+                        price: parseFloat(this.dataset.price),                        
+                        imagePath: this.dataset.image
+                        description: this.dataset.description,
+                    };              
+                    //console.log(dto.description);
+
+                    fetch("/Index?handler=CachePreview", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "RequestVerificationToken": document.querySelector('input[name="__RequestVerificationToken"]').value
+                        },
+                        body: JSON.stringify(dto)
+                    })
+                    
+                    .then(response => {
+                        if (response.ok) {
+                            window.location.href = `/produit/Details?id=${dto.id}`;
+                        } else {
+                            console.error('Cache preview failed');
+                        }
+                    })
+                    .then(()=>{
+                    console.log(dto.description);
+                    })
+                    
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                });
+            });
+        });
+    </script>
     <style>
         body {
             margin: 0;
@@ -569,7 +616,14 @@
             @foreach (var item in Model.Product)
             {
                 <div class="product-card">
-                    <a href="produit/Details?id=@item.Id" class="product-link">
+                    <a href="produit/Details?id=@item.Id" class="product-link"
+                       data-id="@item.Id"
+                       data-name="@item.Name"
+                       data-price="@item.Price"
+                       data-image="@item.ImgPath"
+                       data-description="@item.Description">
+                       
+                       
                         <div class="product-image-wrapper">
                             @if (!string.IsNullOrEmpty(item.ImgPath))
                             {
@@ -629,4 +683,6 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 </body>
+
 </html>
+

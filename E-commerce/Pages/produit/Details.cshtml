@@ -104,6 +104,20 @@
     }
 
     }</style>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const description = document.getElementsByClassName("description");
+        console.log(description);
+      
+    
+    
+    });
+
+
+
+    </script>
+
+    
 
 <div class="product-wrapper">
     <div class="product-card">
@@ -111,9 +125,9 @@
 
             <!-- Product Image -->
             <div class="product-image">
-                @if (!string.IsNullOrEmpty(Model.Product.ImgPath))
+                @if (!string.IsNullOrEmpty(Model.ProductPreview.ImagePath))
                 {
-                    <img src="~/@Model.Product.ImgPath" alt="@Model.Product.Name" />
+                    <img src="~/@Model.ProductPreview.ImagePath" alt="@Model.ProductPreview.Name" />
                 }
                 else
                 {
@@ -123,16 +137,16 @@
 
             <!-- Product Details -->
             <div class="product-details">
-                <h1>@Model.Product.Name</h1>
+                <h1>@Model.ProductPreview.Name</h1>
 
                 <div class="price">
-                    @Html.DisplayFor(model => model.Product.Price) DH
+                    @Html.DisplayFor(model => model.ProductPreview.Price) DH
                 </div>
 
                 <div class="section">
                     <div class="section-title">Description</div>
-                    <div class="description">
-                        @Model.Product.Description
+                    <div class="description">                        
+                        @Model.ProductPreview.Description.Trim()
                     </div>
                 </div>
 

@@ -15,10 +15,7 @@ namespace E_commerce.Pages.login
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.Strict
-            });
-
-            // Optionally, sign out the user if using authentication schemes
-            // await HttpContext.SignOutAsync();
+            });           
 
             return RedirectToPage("/Index");
         }

@@ -1,8 +1,9 @@
+using E_commerce.Data;
+using E_commerce.Models;
+using E_commerce.Models.DTOs;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
-using E_commerce.Data;
-using E_commerce.Models;
 using StackExchange.Redis;
 using System.Text.Json;
 
@@ -21,12 +22,18 @@ namespace E_commerce.Pages
             _redis = redis.GetDatabase();
         }
 
+        //Used for the Cart cache value
+
         [BindProperty]
         public int ProductId { get; set; }
+        /*
+         * [BindProperty]
+         * 
+         * public CartPreviewDTO cart {get, set};
+         
+         */
 
-        [BindProperty]
-        public uint Quantity { get; set; }
-
+        //Add a CartPreviewDTO          IList<CartPreviewDTO> cart{get, set} = new List<CartPreviewDTO>;
         public IList<Product> Product { get; private set; } = new List<Product>();
         public IList<Category> Categories { get; private set; } = new List<Category>();
 
@@ -49,6 +56,9 @@ namespace E_commerce.Pages
                 minPrice,
                 maxPrice,
                 stockStatus);
+
+            
+
         }
 
         public async Task<IActionResult> OnPostAddToCartAsync()
@@ -212,7 +222,7 @@ namespace E_commerce.Pages
             {
                 ProductId = product.Id,
                 SelectedQty = 1,
-                Product = product
+                Product = product       //Delete
             };
 
             cart.AddToCart(line);
@@ -224,5 +234,22 @@ namespace E_commerce.Pages
                 guestId,
                 JsonSerializer.Serialize(cart));
         }
+
+        //DTO Handler       
+        public async Task<IActionResult> OnPostCachePreviewAsync(
+            [FromBody] ProductPreviewDTO dto)
+        {
+            //If key already exists, then overwrite value and reset TTL (To keep cache fresh)
+            await _redis.StringSetAsync(
+                $"ProductPreview:{dto.Id}",
+                JsonSerializer.Serialize(dto),
+                TimeSpan.FromMinutes(2)
+            );
+
+            return new EmptyResult();
+        }
+
+
+
     }
 }
