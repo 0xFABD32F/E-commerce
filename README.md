@@ -29,17 +29,19 @@ Pages/
 ├── login/
 │   ├── Login.cshtml.cs
 │   ├── Logout.cshtml.cs
-│   └── Register.cshtml.cs
+│   └── createAccount.cshtml.cs
 ├── produit/
-│   ├── Index.cshtml.cs
+│   ├── MyListedProducts.cshtml.cs
 │   ├── Details.cshtml.cs
 │   ├── Create.cshtml.cs
 │   ├── Edit.cshtml.cs
 │   └── Delete.cshtml.cs
 └── user/
-    ├── Index.cshtml.cs
+    |── Details.cshtml.cs
+    ├── Create.cshtml.cs
     ├── Edit.cshtml.cs
     └── Delete.cshtml.cs
+    
 ```
 
 ---
@@ -188,7 +190,7 @@ Tools used:
 * Add performance measures
 
 ---
-## 💳 Payment Processing ()
+## 💳 Payment Processing (To add)
 
 ### Concurrency Control & Idempotent Order Placement Using Redis
 
