@@ -182,10 +182,10 @@ Tools used:
 
 ---
 
-## 🧭 Future Improvements
+## 🧭 Future Improvements and Updates
 
 * Implemeting a Shopping Assistant Agent with RAG 
-* Adding a Read-Through cache to the Homepage to load the most viewed/trending products
+* Adding a Read-Through cache based on the most viewed/trending products to minimize database read operations
 * Payment Processing (see next section)
 * Add performance measures
 
