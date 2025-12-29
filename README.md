@@ -196,6 +196,17 @@ Tools used:
 
 This module ensures **safe, consistent, and duplicate-free order processing** in concurrent environments by combining **Redis-based locking** with **idempotency keys**.
 
+### 🔐 Concurrency & Idempotency with Redis
+
+Database locks and transactions ensure data consistency but do not scale well for payment workflows involving retries and network calls. To handle this efficiently:
+
+- **Redis locks** provide fast, atomic, non-blocking concurrency control with TTL-based safety.
+- **Idempotency keys** prevent duplicate orders and ensure exactly-once order execution.
+- The **database remains responsible** only for durable persistence, while Redis handles coordination.
+
+This approach allows high-throughput, distributed-safe, and resilient payment processing.
+
+
 ### 🔐 Objectives
 
 * Prevent double charges
