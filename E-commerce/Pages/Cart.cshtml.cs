@@ -1,6 +1,7 @@
 ﻿using E_commerce.Data;
 using E_commerce.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
@@ -30,7 +31,9 @@ namespace E_commerce.Pages
         /// Cart exposed to the Razor view.
         /// Initialized defensively to avoid null checks in the UI layer.
         /// </summary>
-        public Cart Cart { get; private set; } = new();
+        //public Cart Cart { get; private set; } = new();
+        //Product product
+        
 
         /// <summary>
         /// Time-to-live for guest carts.
@@ -39,24 +42,22 @@ namespace E_commerce.Pages
         /// </summary>
         private const int CartTtlHours = 2;
 
+
+       
+
         public CartModel(E_commerceContext context, IConnectionMultiplexer redis)
         {
             _context = context;
             _redis = redis.GetDatabase();
         }
+        public ProductView ProductView { get; set; } = new();
 
-        /* =========================
-         * Razor Page entry points
-         * ========================= */
+        public Dictionary<int,ProductView>? ProductInfo ;
+        public Dictionary<int, int>? ProductCache;
 
-        /// <summary>
-        /// Loads the cart from Redis, validates its contents,
-        /// and synchronizes product data before rendering.
-        ///
-        /// If no cart exists, the page renders an empty state.
-        /// </summary>
         public async Task OnGetAsync()
         {
+            
             var cart = await LoadCartAsync();
             if (cart == null)
                 return;
@@ -64,7 +65,9 @@ namespace E_commerce.Pages
             await AttachProductsAndCleanAsync(cart);
             await SaveCartAsync(cart);
 
-            Cart = cart;
+            ProductCache = cart;
+
+
         }
 
         /// <summary>
@@ -112,7 +115,7 @@ namespace E_commerce.Pages
         /// Returning null instead of an empty cart allows callers
         /// to distinguish between "no cart yet" and "empty cart".
         /// </summary>
-        private async Task<Cart?> LoadCartAsync()
+        private async Task<Dictionary<int, int>?> LoadCartAsync()
         {
             if (!Request.Cookies.TryGetValue("GuestId", out var guestId))
                 return null;
@@ -121,7 +124,7 @@ namespace E_commerce.Pages
             if (!cartJson.HasValue)
                 return null;
 
-            return JsonSerializer.Deserialize<Cart>(cartJson!);
+            return JsonSerializer.Deserialize<Dictionary<int, int>>(cartJson!);
         }
 
         /// <summary>
@@ -130,7 +133,7 @@ namespace E_commerce.Pages
         /// Refreshing the expiration on each update prevents
         /// active carts from expiring mid-session.
         /// </summary>
-        private async Task SaveCartAsync(Cart cart)
+        private async Task SaveCartAsync(Dictionary<int, int> cart)
         {
             var guestId = Request.Cookies["GuestId"]!;
 
@@ -151,27 +154,23 @@ namespace E_commerce.Pages
         /// - checkout of non-existent items
         /// - price or stock inconsistencies
         /// </summary>
-        private async Task AttachProductsAndCleanAsync(Cart cart)
+        private async Task AttachProductsAndCleanAsync(Dictionary<int, int> cart)
         {
-            if (cart.productLines.Count == 0)
+            if (cart == null || cart.Count == 0)
                 return;
 
-            var products = await LoadProductsAsync(
-                cart.productLines.Select(l => l.ProductId));
+            var products = await LoadProductsAsync(cart.Keys);
 
-            /*
-             * RemoveAll is intentionally used here to avoid modifying
-             * the collection during enumeration, which would lead to
-             * runtime exceptions or subtle logic bugs.
-             */
-            cart.productLines.RemoveAll(line =>
+            // Collect keys to remove (products that don't exist)
+            var keysToRemove = cart.Keys
+                .Where(productId => !products.ContainsKey(productId))
+                .ToList();
+
+            // Remove invalid products from cart
+            foreach (var key in keysToRemove)
             {
-                if (!products.TryGetValue(line.ProductId, out var product))
-                    return true;
-
-                line.Product = product;
-                return false;
-            });
+                cart.Remove(key);
+            }
         }
 
         /// <summary>
@@ -180,11 +179,20 @@ namespace E_commerce.Pages
         /// Returning a dictionary allows O(1) lookups during
         /// cart reconciliation.
         /// </summary>
-        private async Task<Dictionary<int, Product>> LoadProductsAsync(IEnumerable<int> ids)
+        private async Task<Dictionary<int, ProductView>> LoadProductsAsync(IEnumerable<int> ids)
         {
-            return await _context.Product
+            ProductInfo = await _context.Product
                 .Where(p => ids.Contains(p.Id))
-                .ToDictionaryAsync(p => p.Id);
+                .ToDictionaryAsync(
+                    p => p.Id,
+                    p => new ProductView
+                    {
+                        Name = p.Name,
+                        Price = p.Price,
+                        Available_Qty = p.Available_Qty
+                    });
+
+            return ProductInfo;
         }
 
         /* =========================
@@ -197,15 +205,16 @@ namespace E_commerce.Pages
         /// Returning a boolean allows the caller to short-circuit
         /// additional processing when a removal occurs.
         /// </summary>
-        private static bool TryHandleRemove(Cart cart, string? remove)
+        private static bool TryHandleRemove(Dictionary<int, int> cart, string? remove)
         {
             if (string.IsNullOrWhiteSpace(remove))
                 return false;
-
             if (!int.TryParse(remove, out var productId))
                 return false;
+            if (!cart.ContainsKey(productId))
+                return false;
+            cart.Remove(productId);      
 
-            cart.productLines.RemoveAll(l => l.ProductId == productId);
             return true;
         }
 
@@ -216,7 +225,7 @@ namespace E_commerce.Pages
         /// from server-rendered HTML.
         /// </summary>
         private async Task UpdateQuantitiesAsync(
-            Cart cart,
+            Dictionary<int, int> cart,
             int[] productIds,
             uint[] quantities)
         {
@@ -231,16 +240,15 @@ namespace E_commerce.Pages
 
             for (int i = 0; i < productIds.Length; i++)
             {
-                var line = cart.productLines
-                    .FirstOrDefault(l => l.ProductId == productIds[i]);
+                var productId = productIds[i];
 
-                if (line == null)
+                if (!cart.ContainsKey(productId))
                     continue;
 
-                if (!products.TryGetValue(line.ProductId, out var product))
+                if (!products.TryGetValue(productId, out var product))
                 {
                     // Product removed after cart creation → cart must self-heal
-                    cart.productLines.Remove(line);
+                    cart.Remove(productId);
                     continue;
                 }
 
@@ -256,12 +264,11 @@ namespace E_commerce.Pages
                  */
                 if (quantities[i] == 0)
                 {
-                    cart.productLines.Remove(line);
+                    cart.Remove(productId);
                     continue;
                 }
 
-                line.SelectedQty = Math.Min(quantities[i], product.Available_Qty);
-                line.Product = product;
+                cart[productId] = (int)Math.Min(quantities[i], product.Available_Qty);
             }
         }
     }

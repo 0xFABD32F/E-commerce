@@ -657,7 +657,8 @@
                         else
                         {
                             <form method="post" asp-page-handler="AddToCart">
-                                <input type="hidden" name="ProductId" value="@item.Id" />
+                                <input type="hidden" name="Id" value="@item.Id" />                                
+                                <input type="hidden" name="Qty" value="1" />
                                 <button type="submit" class="add-to-cart-btn">Add to Cart</button>
                             </form>
                         }

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
 using System.Text.Json;
+using System.Collections.Generic;
 
 namespace E_commerce.Pages
 {
@@ -23,15 +24,13 @@ namespace E_commerce.Pages
         }
 
         //Used for the Cart cache value
+        [BindProperty]
+        public int Id { get; set; }
 
         [BindProperty]
         public int ProductId { get; set; }
-        /*
-         * [BindProperty]
-         * 
-         * public CartPreviewDTO cart {get, set};
-         
-         */
+        //the Dictionary stores the product's Id with its quantity
+        public Dictionary<int, int>? CartProducts;
 
         //Add a CartPreviewDTO          IList<CartPreviewDTO> cart{get, set} = new List<CartPreviewDTO>;
         public IList<Product> Product { get; private set; } = new List<Product>();
@@ -61,19 +60,16 @@ namespace E_commerce.Pages
 
         }
 
-        public async Task<IActionResult> OnPostAddToCartAsync()
+        public async Task<IActionResult> OnPostAddToCartAsync(CartDTO dto)
         {
             var guestId = GetGuestId();
             if (guestId == null)
-                return RedirectToPage();
-
-            var product = await LoadPurchasableProductAsync(ProductId);
-            if (product == null)
-                return RedirectToPage();
+                return RedirectToPage();         
 
             var cart = await LoadCartAsync(guestId);
+            CartProducts = cart;
 
-            AddProductToCart(cart, product);
+            AddProductToCart(dto);
 
             await SaveCartAsync(guestId, cart);
 
@@ -185,50 +181,29 @@ namespace E_commerce.Pages
          * Cart operations
          * ========================= */
 
-        private async Task<Product?> LoadPurchasableProductAsync(int productId)
-        {
-            /*
-             * Stock validation is enforced server-side to prevent
-             * HTML or request tampering.
-             *
-             * Reference:
-             * https://owasp.org/www-community/attacks/Parameter_tampering
-             */
-            return await _context.Product
-                .Include(p => p.Category)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(p =>
-                    p.Id == productId &&
-                    p.Available_Qty > 0);
-        }
-
-        private async Task<Cart> LoadCartAsync(string guestId)
+        private async Task<Dictionary<int ,int>> LoadCartAsync(string guestId)
         {
             var cartJson = await _redis.StringGetAsync(guestId);
 
             return cartJson.HasValue
-                ? JsonSerializer.Deserialize<Cart>(cartJson!)!
-                : new Cart();
-        }
+                ? JsonSerializer.Deserialize<Dictionary<int, int>>(cartJson!)!
+                : CartProducts = new Dictionary<int, int>();
+        }       
 
-        private static void AddProductToCart(Cart cart, Product product)
+        private void AddProductToCart(CartDTO dto)
         {
-            /*
-             * Quantity is intentionally set server-side.
-             * Client-supplied quantities are ignored here to
-             * avoid inconsistent cart states.
-             */
-            var line = new productLine
+            if (CartProducts.ContainsKey(dto.Id))
             {
-                ProductId = product.Id,
-                SelectedQty = 1,
-                Product = product       //Delete
-            };
-
-            cart.AddToCart(line);
+                CartProducts[dto.Id]++;
+            }
+            else
+            {
+                CartProducts.Add(dto.Id, dto.Qty);
+            }
+            
         }
 
-        private async Task SaveCartAsync(string guestId, Cart cart)
+        private async Task SaveCartAsync(string guestId, Dictionary<int, int> cart)
         {
             await _redis.StringSetAsync(
                 guestId,
