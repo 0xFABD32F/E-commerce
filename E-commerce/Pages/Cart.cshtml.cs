@@ -1,7 +1,6 @@
 ﻿using E_commerce.Data;
 using E_commerce.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
@@ -10,54 +9,62 @@ using System.Text.Json;
 namespace E_commerce.Pages
 {
     /// <summary>
-    /// Manages the shopping cart lifecycle for guest users.
+    /// Handles all cart-related interactions for guest users.
     ///
-    /// Design rationale:
-    /// - Carts are stored in Redis for fast access and automatic expiration.
-    /// - A GuestId cookie is used as the cart key instead of authentication state.
-    /// - Product data is revalidated against the database on every request
-    ///   to prevent stale or tampered cart data.
+    /// Design choice:
+    /// - Cart state is stored in Redis for fast access and automatic expiration.
+    /// - Products are revalidated on every request to ensure data consistency.
     ///
     /// Assumptions:
-    /// - A valid GuestId cookie is created earlier in the request pipeline.
-    /// - Redis is available and configured as a volatile cache, not a source of truth.
+    /// - A "GuestId" cookie uniquely identifies an anonymous user session.
+    /// - Redis is available and configured as a shared cache.
     /// </summary>
     public class CartModel : PageModel
     {
         private readonly E_commerceContext _context;
         private readonly IDatabase _redis;
 
-        /// <summary>
-        /// Cart exposed to the Razor view.
-        /// Initialized defensively to avoid null checks in the UI layer.
-        /// </summary>
-        //public Cart Cart { get; private set; } = new();
-        //Product product
-        
-
-        /// <summary>
-        /// Time-to-live for guest carts.
-        /// This value balances usability (cart persistence)
-        /// with resource cleanup in Redis.
-        /// </summary>
+        // Cart expiration is intentionally short to limit stale pricing and stock data
         private const int CartTtlHours = 2;
 
-
-       
-
+        /// <summary>
+        /// Initializes dependencies required for cart persistence and product lookup.
+        ///
+        /// The Redis connection multiplexer is resolved once and reused
+        /// to avoid connection churn and latency.
+        /// </summary>
         public CartModel(E_commerceContext context, IConnectionMultiplexer redis)
         {
             _context = context;
             _redis = redis.GetDatabase();
         }
+
+        /// <summary>
+        /// Temporary holder for product data (from DB) used during rendering.
+        /// </summary>
         public ProductView ProductView { get; set; } = new();
 
-        public Dictionary<int,ProductView>? ProductInfo ;
+        /// <summary>
+        /// Maps ProductId => ProductView for efficient lookup during page rendering.
+        /// 
+        /// </summary>
+        public Dictionary<int, ProductView>? ProductInfo;
+
+        /// <summary>
+        /// Represents the raw cart structure:
+        /// ProductId => Quantity.
+        /// </summary>
         public Dictionary<int, int>? ProductCache;
 
+        /// <summary>
+        /// Loads the cart, synchronizes it with current product data,
+        /// and persists any corrections.
+        ///
+        /// The cart is cleaned proactively to avoid showing invalid
+        /// or deleted products to the user.
+        /// </summary>
         public async Task OnGetAsync()
         {
-            
             var cart = await LoadCartAsync();
             if (cart == null)
                 return;
@@ -66,19 +73,13 @@ namespace E_commerce.Pages
             await SaveCartAsync(cart);
 
             ProductCache = cart;
-
-
         }
 
         /// <summary>
-        /// Handles cart mutations initiated from the UI.
+        /// Handles cart mutations (remove or update).
         ///
-        /// The method supports:
-        /// - Removing a single product
-        /// - Updating quantities in bulk
-        ///
-        /// All operations are followed by persistence to Redis
-        /// to keep the cart state consistent across requests.
+        /// Explicit branching avoids mixing multiple mutation types
+        /// in a single request, reducing side effects.
         /// </summary>
         public async Task<IActionResult> OnPostAsync(
             int[] ProductIds,
@@ -90,6 +91,7 @@ namespace E_commerce.Pages
             if (cart == null)
                 return RedirectToPage();
 
+            // Removal takes precedence to avoid conflicting operations
             if (TryHandleRemove(cart, remove))
             {
                 await SaveCartAsync(cart);
@@ -112,8 +114,10 @@ namespace E_commerce.Pages
         /// <summary>
         /// Loads the cart associated with the current GuestId.
         ///
-        /// Returning null instead of an empty cart allows callers
-        /// to distinguish between "no cart yet" and "empty cart".
+        /// Returning null (instead of an empty cart) allows callers
+        /// to distinguish between:
+        /// - a missing session
+        /// - an intentionally empty cart
         /// </summary>
         private async Task<Dictionary<int, int>?> LoadCartAsync()
         {
@@ -128,10 +132,10 @@ namespace E_commerce.Pages
         }
 
         /// <summary>
-        /// Persists the cart back to Redis and refreshes its TTL.
+        /// Persists the cart to Redis and refreshes its TTL.
         ///
-        /// Refreshing the expiration on each update prevents
-        /// active carts from expiring mid-session.
+        /// Refreshing expiration on every write ensures that
+        /// active users do not lose their cart mid-session.
         /// </summary>
         private async Task SaveCartAsync(Dictionary<int, int> cart)
         {
@@ -148,25 +152,28 @@ namespace E_commerce.Pages
          * ========================= */
 
         /// <summary>
-        /// Synchronizes cart lines with current product data.
+        /// Synchronizes cart entries with current product data.
         ///
-        /// Invalid or deleted products are removed to prevent:
-        /// - checkout of non-existent items
-        /// - price or stock inconsistencies
+        /// Products that no longer exist are removed to prevent:
+        /// - checkout of invalid items
+        /// - broken UI rendering
+        /// - stale stock or pricing issues
         /// </summary>
         private async Task AttachProductsAndCleanAsync(Dictionary<int, int> cart)
         {
-            if (cart == null || cart.Count == 0)
+            if (cart.Count == 0)
                 return;
 
             var products = await LoadProductsAsync(cart.Keys);
 
-            // Collect keys to remove (products that don't exist)
+            /*
+             * Removal is deferred until after enumeration to avoid
+             * modifying the collection while iterating.
+             */
             var keysToRemove = cart.Keys
                 .Where(productId => !products.ContainsKey(productId))
                 .ToList();
 
-            // Remove invalid products from cart
             foreach (var key in keysToRemove)
             {
                 cart.Remove(key);
@@ -174,10 +181,10 @@ namespace E_commerce.Pages
         }
 
         /// <summary>
-        /// Loads products in bulk to minimize database round-trips.
+        /// Loads product data required for cart validation and rendering.
         ///
-        /// Returning a dictionary allows O(1) lookups during
-        /// cart reconciliation.
+        /// Only the necessary fields are projected to avoid
+        /// over-fetching from the database.
         /// </summary>
         private async Task<Dictionary<int, ProductView>> LoadProductsAsync(IEnumerable<int> ids)
         {
@@ -200,7 +207,7 @@ namespace E_commerce.Pages
          * ========================= */
 
         /// <summary>
-        /// Attempts to remove a cart line based on a string identifier.
+        /// Attempts to remove a cart line using a string identifier.
         ///
         /// Returning a boolean allows the caller to short-circuit
         /// additional processing when a removal occurs.
@@ -209,20 +216,22 @@ namespace E_commerce.Pages
         {
             if (string.IsNullOrWhiteSpace(remove))
                 return false;
+
             if (!int.TryParse(remove, out var productId))
                 return false;
+
             if (!cart.ContainsKey(productId))
                 return false;
-            cart.Remove(productId);      
 
+            cart.Remove(productId);
             return true;
         }
 
         /// <summary>
         /// Updates cart quantities in bulk.
         ///
-        /// All input is treated as untrusted, even if it originates
-        /// from server-rendered HTML.
+        /// All inputs are treated as untrusted, even when generated
+        /// by server-rendered HTML, to defend against parameter tampering.
         /// </summary>
         private async Task UpdateQuantitiesAsync(
             Dictionary<int, int> cart,
@@ -230,8 +239,8 @@ namespace E_commerce.Pages
             uint[] quantities)
         {
             /*
-             * Mismatched arrays indicate a programmer or integration error,
-             * not a user mistake. Failing fast here prevents silent data corruption.
+             * A length mismatch indicates a programming or integration error,
+             * not a user mistake. Failing fast avoids silent corruption.
              */
             if (productIds.Length != quantities.Length)
                 throw new InvalidOperationException("ProductIds and Quantities length mismatch.");
@@ -247,20 +256,17 @@ namespace E_commerce.Pages
 
                 if (!products.TryGetValue(productId, out var product))
                 {
-                    // Product removed after cart creation → cart must self-heal
+                    // Product deleted after cart creation → cart must self-heal
                     cart.Remove(productId);
                     continue;
                 }
 
                 /*
                  * Quantity clamping is enforced server-side to prevent:
-                 * - negative quantities
+                 * - negative or zero quantities
                  * - integer overflows
-                 * - stock manipulation
-                 *
-                 * Client-side validation is advisory only.
-                 * Reference:
-                 * https://owasp.org/www-community/attacks/Parameter_tampering
+                 * - stock manipulation attacks
+                 *         
                  */
                 if (quantities[i] == 0)
                 {

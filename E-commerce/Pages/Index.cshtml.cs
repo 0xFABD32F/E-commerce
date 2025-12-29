@@ -10,29 +10,52 @@ using System.Collections.Generic;
 
 namespace E_commerce.Pages
 {
+    /// <summary>
+    /// Handles the main shop page:
+    /// - Displays products and categories
+    /// - Supports filtering by category, price, and stock
+    /// - Provides cart operations for guest users
+    /// - Guest users are identified via an opaque "GuestId" cookie.
+    /// - Redis is available for cart and cache storage.
+    /// </summary>
     public class IndexModel : PageModel
     {
         private readonly E_commerceContext _context;
         private readonly IDatabase _redis;
 
+        // Guest cart cookies expire after a short period to limit stale data
         private const int GuestCookieLifetimeDays = 2;
 
+        /// <summary>
+        /// Initializes dependencies for database access and Redis caching.
+        /// </summary>
         public IndexModel(E_commerceContext context, IConnectionMultiplexer redis)
         {
             _context = context;
             _redis = redis.GetDatabase();
         }
+        /// <summary>
+        /// 
+        /// </summary>
 
-        //Used for the Cart cache value
+        /* =========================
+         * Page-bound properties
+         * ========================= */
+
+        // Used for binding cart additions
         [BindProperty]
         public int Id { get; set; }
 
         [BindProperty]
-        public int ProductId { get; set; }
-        //the Dictionary stores the product's Id with its quantity
+        public int ProductId { get; set; }       
+        /*
+         * ProductId => Quantity mapping
+         * It is used each time the user clicks on "Add to Cart" (Adds product Id => Qty = 1)         * 
+         * 
+         */
         public Dictionary<int, int>? CartProducts;
 
-        //Add a CartPreviewDTO          IList<CartPreviewDTO> cart{get, set} = new List<CartPreviewDTO>;
+        // Holds the list of products and categories (from DB) to render in the UI 
         public IList<Product> Product { get; private set; } = new List<Product>();
         public IList<Category> Categories { get; private set; } = new List<Category>();
 
@@ -40,6 +63,10 @@ namespace E_commerce.Pages
          * Razor Page entry points
          * ========================= */
 
+        /// <summary>
+        /// Handles GET requests for the shop page.
+        /// Loads categories, filtered products, and ensures the guest cookie exists.
+        /// </summary>
         public async Task OnGetAsync(
             int? categoryId,
             decimal? minPrice,
@@ -55,16 +82,16 @@ namespace E_commerce.Pages
                 minPrice,
                 maxPrice,
                 stockStatus);
-
-            
-
         }
 
+        /// <summary>
+        /// Adds a product to the guest user's cart.
+        /// </summary>
         public async Task<IActionResult> OnPostAddToCartAsync(CartDTO dto)
         {
             var guestId = GetGuestId();
             if (guestId == null)
-                return RedirectToPage();         
+                return RedirectToPage();
 
             var cart = await LoadCartAsync(guestId);
             CartProducts = cart;
@@ -80,18 +107,15 @@ namespace E_commerce.Pages
          * Guest identification
          * ========================= */
 
+        /// <summary>
+        /// Ensures a GuestId cookie exists for cart tracking.
+        /// Creates a new opaque, HttpOnly, secure cookie if missing.
+        /// </summary>
         private void EnsureGuestCookie()
         {
             if (Request.Cookies.ContainsKey("GuestId"))
                 return;
 
-            /*
-             * The GuestId is a server-generated identifier used exclusively
-             * for cart tracking. It is intentionally opaque and non-semantic.
-             *
-             * Reference:
-             * https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html
-             */
             Response.Cookies.Append(
                 "GuestId",
                 Guid.NewGuid().ToString(),
@@ -104,6 +128,9 @@ namespace E_commerce.Pages
                 });
         }
 
+        /// <summary>
+        /// Returns the current GuestId from cookies, or null if missing.
+        /// </summary>
         private string? GetGuestId()
         {
             return Request.Cookies.TryGetValue("GuestId", out var id)
@@ -117,6 +144,7 @@ namespace E_commerce.Pages
 
         private async Task<IList<Category>> LoadCategoriesAsync()
         {
+            // Loads all categories for filtering and UI rendering
             return await _context.Category.ToListAsync();
         }
 
@@ -126,6 +154,7 @@ namespace E_commerce.Pages
             decimal? maxPrice,
             string? stockStatus)
         {
+            // Base query includes category info for display
             var query = _context.Product
                 .Include(p => p.Category)
                 .AsQueryable();
@@ -141,6 +170,7 @@ namespace E_commerce.Pages
             IQueryable<Product> query,
             int? categoryId)
         {
+            // Only filter if a valid categoryId is provided
             return categoryId.HasValue && categoryId > 0
                 ? query.Where(p => p.CategoryId == categoryId)
                 : query;
@@ -163,12 +193,7 @@ namespace E_commerce.Pages
         private static IQueryable<Product> ApplyStockFilter(
             IQueryable<Product> query,
             string? stockStatus)
-        {
-            /*
-             * Stock filtering is case-insensitive but intentionally explicit.
-             * Using magic strings here is acceptable because values are UI-bound
-             * and not reused elsewhere.
-             */
+        {            
             return stockStatus?.ToLower() switch
             {
                 "instock" => query.Where(p => p.Available_Qty > 0),
@@ -181,28 +206,41 @@ namespace E_commerce.Pages
          * Cart operations
          * ========================= */
 
-        private async Task<Dictionary<int ,int>> LoadCartAsync(string guestId)
+        /// <summary>
+        /// Loads the cart from Redis for a given GuestId.
+        /// Returns a new empty dictionary if none exists.
+        /// 
+        /// </summary>
+        private async Task<Dictionary<int, int>> LoadCartAsync(string guestId)
         {
             var cartJson = await _redis.StringGetAsync(guestId);
 
             return cartJson.HasValue
                 ? JsonSerializer.Deserialize<Dictionary<int, int>>(cartJson!)!
                 : CartProducts = new Dictionary<int, int>();
-        }       
+        }
 
+        /// <summary>
+        /// Adds or increments a product in the cart.  
+        /// </summary>
         private void AddProductToCart(CartDTO dto)
         {
-            if (CartProducts.ContainsKey(dto.Id))
+            if (CartProducts == null)
+                CartProducts = new Dictionary<int, int>();
+
+            if (CartProducts.TryGetValue(dto.Id, out var existingQty))
             {
-                CartProducts[dto.Id]++;
+                CartProducts[dto.Id] = existingQty + 1;
             }
             else
             {
                 CartProducts.Add(dto.Id, dto.Qty);
             }
-            
         }
 
+        /// <summary>
+        /// Persists the updated cart back to Redis.
+        /// </summary>
         private async Task SaveCartAsync(string guestId, Dictionary<int, int> cart)
         {
             await _redis.StringSetAsync(
@@ -210,21 +248,34 @@ namespace E_commerce.Pages
                 JsonSerializer.Serialize(cart));
         }
 
-        //DTO Handler       
+        /* =========================
+         * DTO Handler
+         * ========================= */
+
+        /// <summary>
+        /// Caches product previews for short-lived UI updates.
+        /// TTL ensures cache freshness and limits stale data exposure.
+        /// ///////////////
+        /// How it works?
+        /// /////////////
+        /// The index.cshtml page sends a custom POST request that contains
+        /// DTO object holding attributes like product's name, price,
+        /// description and imagePath to this handler.
+        /// This approach serves to communicate data between two pages without
+        /// depending on each other (loose coupling) and to avoid requesting
+        /// the DB for the same info that was available on the first page.
+        /// 
+        /// </summary>
         public async Task<IActionResult> OnPostCachePreviewAsync(
             [FromBody] ProductPreviewDTO dto)
         {
-            //If key already exists, then overwrite value and reset TTL (To keep cache fresh)
             await _redis.StringSetAsync(
                 $"ProductPreview:{dto.Id}",
                 JsonSerializer.Serialize(dto),
-                TimeSpan.FromMinutes(2)
+                TimeSpan.FromMinutes(2) // short-lived cache
             );
 
             return new EmptyResult();
         }
-
-
-
     }
 }

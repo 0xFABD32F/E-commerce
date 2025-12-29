@@ -33,13 +33,13 @@
 
     <h1 class="mb-4 fw-bold">🛒 Your Shopping Cart</h1>
 
-    @if (Model.ProductCache.Count == 0)
+    @if (Model.ProductCache == null || Model.ProductCache.Count == 0)
     {
         <div class="alert alert-info text-center p-4">
             <h5 class="mb-2">Your cart is empty</h5>
             <p class="mb-3">Looks like you haven’t added anything yet.</p>
             <a asp-page="/Index" class="btn btn-primary">Start Shopping</a>
-        </div>
+        </div>  
     }
     else
     {
@@ -95,11 +95,9 @@
                                         </td>
                                     </tr>
 
-                                }
+                                }                             
 
-                                
-
-                                    //total += quantity * ProductInfo[productId].Price;
+                                    
                                 
                             }
                         }
@@ -133,9 +131,7 @@
                         @Model.ProductView.CalculateTotal(Model.ProductInfo, Model.ProductCache) DH
                     </h4>
                 </div>
-            </div>
-
-            
+            </div>            
 
         </form>
     }
