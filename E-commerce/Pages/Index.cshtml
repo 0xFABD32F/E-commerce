@@ -31,10 +31,10 @@
                         id: this.dataset.id,
                         name: this.dataset.name,                        
                         price: parseFloat(this.dataset.price),                        
-                        imagePath: this.dataset.image
-                        description: this.dataset.description,
+                        imagePath: this.dataset.image,
+                        description: this.dataset.description
                     };              
-                    //console.log(dto.description);
+                    
 
                     fetch("/Index?handler=CachePreview", {
                         method: "POST",

@@ -5,13 +5,14 @@
         public string Name { get; set; }
         public decimal Price { get; set; }
         public uint Available_Qty { get; set; }
+        public int Selected_Qty { get; set; }
 
 
-        public decimal CalculateTotal(Dictionary<int,ProductView> ProductInfo, Dictionary<int, int> ProductCache)
+        public decimal CalculateTotal(Dictionary<int,ProductView> ProductInfo)
         {
             decimal total = 0;
             foreach (var (id, product) in ProductInfo) {
-                total += product.Price * ProductCache[id];
+                total += product.Price * product.Selected_Qty;
             }
             return total;
         }

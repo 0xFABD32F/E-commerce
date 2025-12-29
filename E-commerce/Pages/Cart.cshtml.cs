@@ -26,13 +26,7 @@ namespace E_commerce.Pages
 
         // Cart expiration is intentionally short to limit stale pricing and stock data
         private const int CartTtlHours = 2;
-
-        /// <summary>
-        /// Initializes dependencies required for cart persistence and product lookup.
-        ///
-        /// The Redis connection multiplexer is resolved once and reused
-        /// to avoid connection churn and latency.
-        /// </summary>
+      
         public CartModel(E_commerceContext context, IConnectionMultiplexer redis)
         {
             _context = context;
@@ -40,21 +34,16 @@ namespace E_commerce.Pages
         }
 
         /// <summary>
-        /// Temporary holder for product data (from DB) used during rendering.
+        /// Used to call the CalculateTotal() method
         /// </summary>
-        public ProductView ProductView { get; set; } = new();
+        public ProductView ProductView { get; private set; } = new();
 
         /// <summary>
-        /// Maps ProductId => ProductView for efficient lookup during page rendering.
-        /// 
+        /// Maps ProductId => ProductView
+        /// After validating the Cart's cache against the DB, ProductInfo will hold a mix of cached data (Selected_Qty)
+        /// and information that comes from DB (Name, Available_Qty, Price) all stored in ProductView object. 
         /// </summary>
-        public Dictionary<int, ProductView>? ProductInfo;
-
-        /// <summary>
-        /// Represents the raw cart structure:
-        /// ProductId => Quantity.
-        /// </summary>
-        public Dictionary<int, int>? ProductCache;
+        public Dictionary<int, ProductView>? ProductInfo;     
 
         /// <summary>
         /// Loads the cart, synchronizes it with current product data,
@@ -71,8 +60,16 @@ namespace E_commerce.Pages
 
             await AttachProductsAndCleanAsync(cart);
             await SaveCartAsync(cart);
+            //Separate this
+            foreach (var (productId, qty) in cart)
+            {
+                if (ProductInfo != null && ProductInfo.TryGetValue(productId, out var productView))
+                {
+                    productView.Selected_Qty = qty;
+                }
+            }
 
-            ProductCache = cart;
+            //ProductCache = cart;
         }
 
         /// <summary>
@@ -105,11 +102,7 @@ namespace E_commerce.Pages
             }
 
             return RedirectToPage();
-        }
-
-        /* =========================
-         * Cart loading / persistence
-         * ========================= */
+        }             
 
         /// <summary>
         /// Loads the cart associated with the current GuestId.
@@ -256,7 +249,7 @@ namespace E_commerce.Pages
 
                 if (!products.TryGetValue(productId, out var product))
                 {
-                    // Product deleted after cart creation → cart must self-heal
+                    // Product deleted after cart creation => cart must self-heal
                     cart.Remove(productId);
                     continue;
                 }
@@ -273,6 +266,7 @@ namespace E_commerce.Pages
                     cart.Remove(productId);
                     continue;
                 }
+                //Validating entered quantities against available quantities that came from DB
 
                 cart[productId] = (int)Math.Min(quantities[i], product.Available_Qty);
             }

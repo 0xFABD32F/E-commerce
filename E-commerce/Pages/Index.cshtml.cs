@@ -33,24 +33,11 @@ namespace E_commerce.Pages
         {
             _context = context;
             _redis = redis.GetDatabase();
-        }
-        /// <summary>
-        /// 
-        /// </summary>
-
-        /* =========================
-         * Page-bound properties
-         * ========================= */
-
-        // Used for binding cart additions
-        [BindProperty]
-        public int Id { get; set; }
-
-        [BindProperty]
-        public int ProductId { get; set; }       
+        }  
+                   
         /*
          * ProductId => Quantity mapping
-         * It is used each time the user clicks on "Add to Cart" (Adds product Id => Qty = 1)         * 
+         * It is used each time the user clicks on "Add to Cart" (Adds product Id => Qty = 1)
          * 
          */
         public Dictionary<int, int>? CartProducts;
@@ -200,11 +187,7 @@ namespace E_commerce.Pages
                 "outofstock" => query.Where(p => p.Available_Qty == 0),
                 _ => query
             };
-        }
-
-        /* =========================
-         * Cart operations
-         * ========================= */
+        }       
 
         /// <summary>
         /// Loads the cart from Redis for a given GuestId.
@@ -221,7 +204,7 @@ namespace E_commerce.Pages
         }
 
         /// <summary>
-        /// Adds or increments a product in the cart.  
+        /// Adds a new product to the cart or increments its quantity.  
         /// </summary>
         private void AddProductToCart(CartDTO dto)
         {
@@ -253,11 +236,12 @@ namespace E_commerce.Pages
          * ========================= */
 
         /// <summary>
+        /// 
         /// Caches product previews for short-lived UI updates.
         /// TTL ensures cache freshness and limits stale data exposure.
-        /// ///////////////
-        /// How it works?
-        /// /////////////
+        /// ///////////////////
+        /// How does it work?
+        /// /////////////////
         /// The index.cshtml page sends a custom POST request that contains
         /// DTO object holding attributes like product's name, price,
         /// description and imagePath to this handler.
@@ -272,7 +256,7 @@ namespace E_commerce.Pages
             await _redis.StringSetAsync(
                 $"ProductPreview:{dto.Id}",
                 JsonSerializer.Serialize(dto),
-                TimeSpan.FromMinutes(2) // short-lived cache
+                TimeSpan.FromMinutes(2) 
             );
 
             return new EmptyResult();
