@@ -51,6 +51,12 @@ builder.Services.AddDbContext<E_commerceContext>(options =>
 //});
 builder.Services.AddSingleton<IConnectionMultiplexer>(
     sp => ConnectionMultiplexer.Connect("localhost:6379"));
+builder.Services.AddScoped<IDatabase>(sp => sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase());
+
+builder.Services.AddHttpClient<E_commerce.Data.Services.IAIService, E_commerce.Data.Services.AIService>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5);
+});
 
 var app = builder.Build();
 

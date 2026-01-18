@@ -1,0 +1,36 @@
+@page
+@model E_commerce.Pages.ChatModel
+@{
+    // This page is primarily an API endpoint for the chat widget, 
+    // but can also serve as a standalone chat view if needed.
+    ViewData["Title"] = "AI Assistant";
+}
+
+<div class="container mt-5">
+    <h2>AI Shopping Assistant</h2>
+    <p>This page powers the AI chat widget.</p>
+    
+    <div class="card mt-4 p-4">
+        <h4>Admin Controls</h4>
+        <p>Use this to build the vector index for all products.</p>
+        <button id="indexBtn" class="btn btn-primary">Index All Products</button>
+        <div id="indexStatus" class="mt-2 text-muted"></div>
+    </div>
+
+    <script>
+        document.getElementById('indexBtn').addEventListener('click', async () => {
+            const statusDiv = document.getElementById('indexStatus');
+            statusDiv.textContent = "Indexing...";
+            try {
+                const res = await fetch('/Chat?handler=IndexAll', { 
+                    method: 'POST',
+                    headers: { 'RequestVerificationToken': document.querySelector('input[name="__RequestVerificationToken"]')?.value }
+                });
+                const data = await res.json();
+                statusDiv.textContent = data.status || "Done.";
+            } catch (err) {
+                statusDiv.textContent = "Error: " + err;
+            }
+        });
+    </script>
+</div>

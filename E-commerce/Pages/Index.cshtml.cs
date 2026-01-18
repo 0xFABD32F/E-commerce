@@ -61,6 +61,7 @@ namespace E_commerce.Pages
             string? stockStatus)
         {
             EnsureGuestCookie();
+            //Need to load a certain amount of products to the cache (read-through) cache ()
 
             Categories = await LoadCategoriesAsync();
 
