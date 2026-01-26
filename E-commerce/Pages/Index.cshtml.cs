@@ -22,6 +22,7 @@ namespace E_commerce.Pages
     {
         private readonly E_commerceContext _context;
         private readonly IDatabase _redis;
+        private readonly Services.AI.VectorStoreSeeder _seeder;
 
         // Guest cart cookies expire after a short period to limit stale data
         private const int GuestCookieLifetimeDays = 2;
@@ -29,10 +30,14 @@ namespace E_commerce.Pages
         /// <summary>
         /// Initializes dependencies for database access and Redis caching.
         /// </summary>
-        public IndexModel(E_commerceContext context, IConnectionMultiplexer redis)
+        public IndexModel(
+            E_commerceContext context, 
+            IConnectionMultiplexer redis,
+            Services.AI.VectorStoreSeeder seeder)
         {
             _context = context;
             _redis = redis.GetDatabase();
+            _seeder = seeder;
         }  
                    
         /*
@@ -70,6 +75,13 @@ namespace E_commerce.Pages
                 minPrice,
                 maxPrice,
                 stockStatus);
+
+            // Seed vector store with currently displayed products
+            // Using a background task or fire-and-forget might be better for performance, 
+            // but for now we follow the requirement to transfer the result.
+            // We'll await it to ensure it completes, or we could leave it unawaited if latency is an issue.
+            // Given the bulk optimization, it should be fast.
+            await _seeder.SeedAsync(Product.ToList());
         }
 
         /// <summary>

@@ -1,6 +1,7 @@
 using E_commerce.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Qdrant.Client;
 using StackExchange.Redis;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -44,21 +45,55 @@ builder.Services.AddAuthorization();
 builder.Services.AddRazorPages();
 builder.Services.AddDbContext<E_commerceContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("E_commerceContext") ?? throw new InvalidOperationException("Connection string 'E_commerceContext' not found.")));
-//builder.Services.AddStackExchangeRedisCache(options =>
-//{
-  //  options.Configuration = "localhost:6379"; 
-    //options.InstanceName = "EComCart:";       
-//});
-builder.Services.AddSingleton<IConnectionMultiplexer>(
-    sp => ConnectionMultiplexer.Connect("localhost:6379"));
-builder.Services.AddScoped<IDatabase>(sp => sp.GetRequiredService<IConnectionMultiplexer>().GetDatabase());
 
-builder.Services.AddHttpClient<E_commerce.Data.Services.IAIService, E_commerce.Data.Services.AIService>(client =>
+
+// Redis for cart storage
+builder.Services.AddSingleton<IConnectionMultiplexer>(
+    ConnectionMultiplexer.Connect("localhost:6379,abortConnect=false,connectTimeout=2000"));
+
+// Qdrant Cloud Client
+builder.Services.AddSingleton<QdrantClient>(sp =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    var url = config["Qdrant:Url"] ?? throw new InvalidOperationException("Qdrant:Url not configured");
+    var apiKey = config["Qdrant:ApiKey"] ?? throw new InvalidOperationException("Qdrant:ApiKey not configured");
+    return new QdrantClient(new Uri(url), apiKey);
+});
+
+// AI Services (SOLID)
+builder.Services.AddHttpClient<E_commerce.Services.AI.IEmbeddingService, E_commerce.Services.AI.OllamaEmbeddingService>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5);
+});
+builder.Services.AddHttpClient<E_commerce.Services.AI.IChatService, E_commerce.Services.AI.GroqChatService>(client =>
 {
     client.Timeout = TimeSpan.FromMinutes(5);
 });
 
+builder.Services.AddScoped<E_commerce.Services.AI.IVectorStore, E_commerce.Services.AI.QdrantVectorStore>();
+builder.Services.AddScoped<E_commerce.Services.AI.ISearchOrchestrator, E_commerce.Services.AI.ProductSearchOrchestrator>();
+builder.Services.AddScoped<E_commerce.Services.AI.VectorStoreSeeder>();
+//builder.Services.AddScoped<E_commerce.Services.ICartService, E_commerce.Services.CartService>();
+builder.Services.AddScoped<E_commerce.Services.AI.IChatContextService, E_commerce.Services.AI.ChatContextService>();
+builder.Services.AddHttpContextAccessor();
+
 var app = builder.Build();
+
+// Data Seeding
+// Data Seeding moved to Index.cshtml.cs
+// using (var scope = app.Services.CreateScope())
+// {
+//     try 
+//     {
+//          // Seeding is now triggered by the application usage (Index page)
+//          // passing the data directly to the seeder.
+//     }
+//     catch (Exception ex)
+//     {
+//         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+//         logger.LogError(ex, "Failed to seed vector store.");
+//     }
+// }
 
 
 // Configure the HTTP request pipeline.
@@ -74,7 +109,6 @@ app.UseHttpsRedirection();
 
 app.UseRouting();
 
-app.UseAuthorization();
 
 app.MapStaticAssets();
 app.MapRazorPages()

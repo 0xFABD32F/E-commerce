@@ -1,18 +1,17 @@
-using E_commerce.Data.Services;
+using E_commerce.Services.AI;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 
 namespace E_commerce.Pages
 {
     public class ChatModel : PageModel
     {
-        private readonly IAIService _aiService;
+        private readonly ISearchOrchestrator _searchOrchestrator;
 
-        public ChatModel(IAIService aiService)
+        public ChatModel(ISearchOrchestrator searchOrchestrator)
         {
-            _aiService = aiService;
+            _searchOrchestrator = searchOrchestrator;
         }
 
         public void OnGet()
@@ -21,26 +20,23 @@ namespace E_commerce.Pages
 
         public async Task<IActionResult> OnPostAskAsync([FromBody] ChatRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request?.Message))
+            try
             {
-                return new JsonResult(new { answer = "I didn't hear anything!" });
+                Console.WriteLine($"[API] Chat request received: {request?.Message}");
+                if (string.IsNullOrWhiteSpace(request?.Message))
+                {
+                    return new JsonResult(new { answer = "I didn't hear anything!" });
+                }
+
+                var response = await _searchOrchestrator.GetAnswerAsync(request.Message);
+                Console.WriteLine("[API] Chat response generated successfully.");
+                return new JsonResult(new { answer = response });
             }
-
-            var response = await _aiService.ChatAsync(request.Message);
-            return new JsonResult(new { answer = response });
-        }
-
-        // Helper to index products manually (admin/dev utility)
-        // Call via POST /Chat?handler=IndexAll
-        // In a real app, this would be behind auth or a background job
-        public async Task<IActionResult> OnPostIndexAllAsync([FromServices] E_commerce.Data.E_commerceContext context)
-        {
-            var products = context.Product.ToList(); // Load all for simplicity
-            foreach (var p in products)
+            catch (System.Exception ex)
             {
-                await _aiService.IndexProductAsync(p);
+                Console.WriteLine($"[API] ERROR in ChatModel: {ex}");
+                return new JsonResult(new { answer = "Sorry, an internal error occurred." }) { StatusCode = 500 };
             }
-            return new JsonResult(new { status = $"Indexed {products.Count} products." });
         }
 
         public class ChatRequest

@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // User Message
         appendMessage(text, 'user');
         input.value = '';
-        
+
         // Loading Indicator
         const loadingId = appendLoading();
 
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // NOTE: This URL assumes the backend Razor Page is mapped to /Chat
             // If the user puts it elsewhere, they might need to adjust this.
             // Using 'fetch' to POST json data
-            const response = await fetch('/Chat?handler=Ask', { 
+            const response = await fetch('/Chat?handler=Ask', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
