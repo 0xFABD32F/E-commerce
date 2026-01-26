@@ -73,28 +73,9 @@ builder.Services.AddHttpClient<E_commerce.Services.AI.IChatService, E_commerce.S
 builder.Services.AddScoped<E_commerce.Services.AI.IVectorStore, E_commerce.Services.AI.QdrantVectorStore>();
 builder.Services.AddScoped<E_commerce.Services.AI.ISearchOrchestrator, E_commerce.Services.AI.ProductSearchOrchestrator>();
 builder.Services.AddScoped<E_commerce.Services.AI.VectorStoreSeeder>();
-//builder.Services.AddScoped<E_commerce.Services.ICartService, E_commerce.Services.CartService>();
-builder.Services.AddScoped<E_commerce.Services.AI.IChatContextService, E_commerce.Services.AI.ChatContextService>();
 builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
-
-// Data Seeding
-// Data Seeding moved to Index.cshtml.cs
-// using (var scope = app.Services.CreateScope())
-// {
-//     try 
-//     {
-//          // Seeding is now triggered by the application usage (Index page)
-//          // passing the data directly to the seeder.
-//     }
-//     catch (Exception ex)
-//     {
-//         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-//         logger.LogError(ex, "Failed to seed vector store.");
-//     }
-// }
-
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
