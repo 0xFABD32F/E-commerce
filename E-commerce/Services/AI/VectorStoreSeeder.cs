@@ -40,7 +40,7 @@ namespace E_commerce.Services.AI
 
                 // 1. Prepare texts for embedding
                 var textsToIndex = products.Select(p => 
-                    $"Category: {p.Category?.Name ?? "General"}. Price: {p.Price} DH. Description: {p.Description ?? ""}"
+                    $"Category: {p.Category?.Name ?? "General"}. Price: {p.Price} DH."
                 ).ToList();
 
                 // 2. Bulk Generate Embeddings
