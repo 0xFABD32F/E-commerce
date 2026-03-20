@@ -59,7 +59,7 @@ Handles **user authentication and account management** using JWT:
 
 ---
 
-### 🛒 `Pages/Cart.cshtml.cs`
+###  `Pages/Cart.cshtml.cs`
 
 Contains **all shopping cart logic**:
 
