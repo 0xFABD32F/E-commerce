@@ -1,4 +1,4 @@
-# E-Commerce Web Application (ASP.NET Razor Pages)
+# Music Store Web Application (ASP.NET Razor Pages)
 
 ##  Project Overview
 
